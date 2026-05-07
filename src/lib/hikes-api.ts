@@ -146,6 +146,42 @@ export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
   return toView(normalize([data])[0]);
 }
 
+export type ParticipantStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+export async function fetchMyParticipation(
+  hikeId: string,
+  userId: string,
+): Promise<{ id: string; status: ParticipantStatus } | null> {
+  const { data, error } = await supabase
+    .from("hike_participants")
+    .select("id, status")
+    .eq("hike_id", hikeId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as any) ?? null;
+}
+
+export async function requestToJoinHike(hikeId: string) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("You must be signed in.");
+  const { data, error } = await supabase
+    .from("hike_participants")
+    .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
+    .select("id, status")
+    .single();
+  if (error) throw error;
+  return data as { id: string; status: ParticipantStatus };
+}
+
+export async function cancelJoinRequest(participantId: string) {
+  const { error } = await supabase
+    .from("hike_participants")
+    .delete()
+    .eq("id", participantId);
+  if (error) throw error;
+}
+
 export function slugify(s: string) {
   return s
     .toLowerCase()
