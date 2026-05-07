@@ -118,7 +118,7 @@ export async function fetchPublicHikes(opts?: {
   let q = supabase
     .from("hikes")
     .select(SELECT)
-    .eq("status", "published")
+    .in("status", ["open", "full"])
     .gte("starts_at", new Date(Date.now() - 86400000).toISOString())
     .order("starts_at", { ascending: true });
 
