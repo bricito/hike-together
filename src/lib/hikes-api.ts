@@ -94,8 +94,8 @@ export function toView(h: DbHike): HikeView {
 
 const SELECT = `
   id, slug, organizer_id, title, description, location, meeting_point,
-  starts_at, duration_hours, difficulty, distance_km, elevation_m,
-  max_participants, equipment, cover_image, status, created_at,
+  starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
+  max_participants, equipment, cover_image:cover_image_url, status, created_at,
   organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
   participants:hike_participants ( count )
 `;
@@ -118,7 +118,7 @@ export async function fetchPublicHikes(opts?: {
   let q = supabase
     .from("hikes")
     .select(SELECT)
-    .eq("status", "published")
+    .in("status", ["open", "full"])
     .gte("starts_at", new Date(Date.now() - 86400000).toISOString())
     .order("starts_at", { ascending: true });
 
@@ -144,6 +144,42 @@ export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
   if (error) throw error;
   if (!data) return null;
   return toView(normalize([data])[0]);
+}
+
+export type ParticipantStatus = "pending" | "accepted" | "declined" | "cancelled";
+
+export async function fetchMyParticipation(
+  hikeId: string,
+  userId: string,
+): Promise<{ id: string; status: ParticipantStatus } | null> {
+  const { data, error } = await supabase
+    .from("hike_participants")
+    .select("id, status")
+    .eq("hike_id", hikeId)
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (error) throw error;
+  return (data as any) ?? null;
+}
+
+export async function requestToJoinHike(hikeId: string) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("You must be signed in.");
+  const { data, error } = await supabase
+    .from("hike_participants")
+    .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
+    .select("id, status")
+    .single();
+  if (error) throw error;
+  return data as { id: string; status: ParticipantStatus };
+}
+
+export async function cancelJoinRequest(participantId: string) {
+  const { error } = await supabase
+    .from("hike_participants")
+    .delete()
+    .eq("id", participantId);
+  if (error) throw error;
 }
 
 export function slugify(s: string) {
@@ -173,13 +209,16 @@ export async function createHike(input: {
   if (!u.user) throw new Error("You must be signed in.");
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+  const { elevation_m, cover_image, ...rest } = input;
   const { data, error } = await supabase
     .from("hikes")
     .insert({
-      ...input,
+      ...rest,
+      elevation_gain_m: elevation_m,
+      cover_image_url: cover_image ?? null,
       slug,
       organizer_id: u.user.id,
-      status: "published",
+      status: "open",
     })
     .select("slug")
     .single();

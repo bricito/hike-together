@@ -1,11 +1,12 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2 } from "lucide-react";
-import { fetchHikeBySlug, fetchPublicHikes } from "@/lib/hikes-api";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X } from "lucide-react";
+import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest } from "@/lib/hikes-api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/hikes/$slug")({
@@ -46,6 +47,36 @@ export const Route = createFileRoute("/hikes/$slug")({
 function HikeDetail() {
   const { hike } = Route.useLoaderData();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const participationKey = ["participation", hike.id, user?.id];
+  const { data: participation } = useQuery({
+    queryKey: participationKey,
+    queryFn: () => fetchMyParticipation(hike.id, user!.id),
+    enabled: !!user,
+  });
+
+  const joinMut = useMutation({
+    mutationFn: () => requestToJoinHike(hike.id),
+    onSuccess: (data) => {
+      qc.setQueryData(participationKey, data);
+      toast.success("Request sent! The host will review it shortly.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not send request."),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: () => cancelJoinRequest(participation!.id),
+    onSuccess: () => {
+      qc.setQueryData(participationKey, null);
+      toast.success("Request cancelled.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not cancel request."),
+  });
+
+  const isOrganizer = user?.id === hike.organizer.id;
+
   const { data: others = [] } = useQuery({
     queryKey: ["hikes", "others", hike.id],
     queryFn: () => fetchPublicHikes({ limit: 4 }),
@@ -126,11 +157,56 @@ function HikeDetail() {
             <p className="text-sm text-muted-foreground">Join this hike</p>
             <p className="font-display text-2xl mt-1">{hike.spotsLeft} spots left</p>
             <p className="text-xs text-muted-foreground mt-1">Free · Community organized</p>
-            <Button asChild size="lg" className="w-full rounded-2xl mt-5">
-              <Link to={user ? "/hikes" : "/signup"}>{user ? "Request to join" : "Sign up to join"}</Link>
-            </Button>
-            <Button variant="outline" className="w-full rounded-2xl mt-2">Message host</Button>
-            {!user && <p className="text-[11px] text-muted-foreground text-center mt-3">You'll need an account to join</p>}
+
+            {isOrganizer ? (
+              <div className="mt-5 p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
+                You're hosting this hike
+              </div>
+            ) : !user ? (
+              <>
+                <Button
+                  size="lg"
+                  className="w-full rounded-2xl mt-5"
+                  onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
+                >
+                  Sign up to join
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center mt-3">You'll need an account to join</p>
+              </>
+            ) : participation?.status === "pending" ? (
+              <>
+                <div className="mt-5 p-3 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Request pending
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-2xl mt-2"
+                  disabled={cancelMut.isPending}
+                  onClick={() => cancelMut.mutate()}
+                >
+                  <X className="h-4 w-4" /> Cancel request
+                </Button>
+              </>
+            ) : participation?.status === "accepted" ? (
+              <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" /> You're going!
+              </div>
+            ) : participation?.status === "declined" ? (
+              <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
+                Your request wasn't accepted this time.
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full rounded-2xl mt-5"
+                disabled={joinMut.isPending || hike.spotsLeft === 0}
+                onClick={() => joinMut.mutate()}
+              >
+                {joinMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : hike.spotsLeft === 0 ? "Hike full" : "Request to join"}
+              </Button>
+            )}
+
+            {!isOrganizer && <Button variant="outline" className="w-full rounded-2xl mt-2">Message host</Button>}
           </div>
         </aside>
       </section>
