@@ -47,6 +47,36 @@ export const Route = createFileRoute("/hikes/$slug")({
 function HikeDetail() {
   const { hike } = Route.useLoaderData();
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
+
+  const participationKey = ["participation", hike.id, user?.id];
+  const { data: participation } = useQuery({
+    queryKey: participationKey,
+    queryFn: () => fetchMyParticipation(hike.id, user!.id),
+    enabled: !!user,
+  });
+
+  const joinMut = useMutation({
+    mutationFn: () => requestToJoinHike(hike.id),
+    onSuccess: (data) => {
+      qc.setQueryData(participationKey, data);
+      toast.success("Request sent! The host will review it shortly.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not send request."),
+  });
+
+  const cancelMut = useMutation({
+    mutationFn: () => cancelJoinRequest(participation!.id),
+    onSuccess: () => {
+      qc.setQueryData(participationKey, null);
+      toast.success("Request cancelled.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not cancel request."),
+  });
+
+  const isOrganizer = user?.id === hike.organizer.id;
+
   const { data: others = [] } = useQuery({
     queryKey: ["hikes", "others", hike.id],
     queryFn: () => fetchPublicHikes({ limit: 4 }),
