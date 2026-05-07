@@ -9,8 +9,6 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
-import { AuthProvider } from "@/lib/auth-context";
-import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -75,13 +73,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { name: "description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Lovable App" },
+      { name: "twitter:description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b10554f0-8c1a-465a-a3a4-4756b336868d/id-preview-7196effb--7edad3d3-0ad1-4246-a80c-9651952a5013.lovable.app-1778168115431.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b10554f0-8c1a-465a-a3a4-4756b336868d/id-preview-7196effb--7edad3d3-0ad1-4246-a80c-9651952a5013.lovable.app-1778168115431.png" },
     ],
     links: [
       {
@@ -115,10 +117,7 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Outlet />
-        <Toaster />
-      </AuthProvider>
+      <Outlet />
     </QueryClientProvider>
   );
 }
