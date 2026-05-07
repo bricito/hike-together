@@ -7,7 +7,8 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { HikeCard } from "@/components/HikeCard";
-import { hikes } from "@/lib/hikes-data";
+import { useQuery } from "@tanstack/react-query";
+import { fetchPublicHikes } from "@/lib/hikes-api";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -22,7 +23,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
-  const featured = hikes.slice(0, 4);
+  const { data: featured = [] } = useQuery({
+    queryKey: ["hikes", "featured"],
+    queryFn: () => fetchPublicHikes({ limit: 4 }),
+  });
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -94,9 +98,13 @@ function Index() {
           </div>
           <Link to="/hikes" className="hidden md:inline text-sm text-primary hover:underline">View all →</Link>
         </div>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          {featured.map((h) => <HikeCard key={h.id} hike={h} />)}
-        </div>
+        {featured.length === 0 ? (
+          <p className="text-muted-foreground text-center py-10">No hikes yet. <Link to="/create" className="text-primary underline">Be the first to host one!</Link></p>
+        ) : (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {featured.map((h) => <HikeCard key={h.id} hike={h} />)}
+          </div>
+        )}
       </section>
 
       {/* HOW IT WORKS */}
