@@ -16,7 +16,7 @@ export function MobileNav() {
         {items.map(({ to, label, icon: Icon, primary }) => (
           <li key={label} className="flex">
             <Link
-              to={to}
+              to={to as string}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
             >
               {primary ? (
