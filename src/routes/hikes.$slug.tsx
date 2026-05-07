@@ -99,7 +99,7 @@ function HikeDetail() {
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">What to bring</h2>
             <ul className="grid sm:grid-cols-2 gap-2">
-              {hike.equipment.map((e) => (
+              {hike.equipment.map((e: string) => (
                 <li key={e} className="flex items-center gap-2 p-3 rounded-2xl bg-secondary/50 text-sm">
                   <Backpack className="h-4 w-4 text-primary" /> {e}
                 </li>
