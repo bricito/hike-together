@@ -157,11 +157,56 @@ function HikeDetail() {
             <p className="text-sm text-muted-foreground">Join this hike</p>
             <p className="font-display text-2xl mt-1">{hike.spotsLeft} spots left</p>
             <p className="text-xs text-muted-foreground mt-1">Free · Community organized</p>
-            <Button asChild size="lg" className="w-full rounded-2xl mt-5">
-              <Link to={user ? "/hikes" : "/signup"}>{user ? "Request to join" : "Sign up to join"}</Link>
-            </Button>
-            <Button variant="outline" className="w-full rounded-2xl mt-2">Message host</Button>
-            {!user && <p className="text-[11px] text-muted-foreground text-center mt-3">You'll need an account to join</p>}
+
+            {isOrganizer ? (
+              <div className="mt-5 p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
+                You're hosting this hike
+              </div>
+            ) : !user ? (
+              <>
+                <Button
+                  size="lg"
+                  className="w-full rounded-2xl mt-5"
+                  onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
+                >
+                  Sign up to join
+                </Button>
+                <p className="text-[11px] text-muted-foreground text-center mt-3">You'll need an account to join</p>
+              </>
+            ) : participation?.status === "pending" ? (
+              <>
+                <div className="mt-5 p-3 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Request pending
+                </div>
+                <Button
+                  variant="outline"
+                  className="w-full rounded-2xl mt-2"
+                  disabled={cancelMut.isPending}
+                  onClick={() => cancelMut.mutate()}
+                >
+                  <X className="h-4 w-4" /> Cancel request
+                </Button>
+              </>
+            ) : participation?.status === "accepted" ? (
+              <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                <Check className="h-4 w-4" /> You're going!
+              </div>
+            ) : participation?.status === "declined" ? (
+              <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
+                Your request wasn't accepted this time.
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full rounded-2xl mt-5"
+                disabled={joinMut.isPending || hike.spotsLeft === 0}
+                onClick={() => joinMut.mutate()}
+              >
+                {joinMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : hike.spotsLeft === 0 ? "Hike full" : "Request to join"}
+              </Button>
+            )}
+
+            {!isOrganizer && <Button variant="outline" className="w-full rounded-2xl mt-2">Message host</Button>}
           </div>
         </aside>
       </section>
