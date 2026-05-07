@@ -1,13 +1,13 @@
 import { Link } from "@tanstack/react-router";
 import { Home, Map, PlusCircle, MessageCircle, User } from "lucide-react";
 
-const items = [
+const items: Array<{ to: string; label: string; icon: typeof Home; primary?: boolean }> = [
   { to: "/", label: "Home", icon: Home },
   { to: "/hikes", label: "Map", icon: Map },
   { to: "/create", label: "Create", icon: PlusCircle, primary: true },
   { to: "/login", label: "Messages", icon: MessageCircle },
   { to: "/login", label: "Profile", icon: User },
-] as const;
+];
 
 export function MobileNav() {
   return (
