@@ -9,38 +9,116 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SignupRouteImport } from './routes/signup'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as HikesIndexRouteImport } from './routes/hikes.index'
+import { Route as HikesSlugRouteImport } from './routes/hikes.$slug'
 
+const SignupRoute = SignupRouteImport.update({
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreateRoute = CreateRouteImport.update({
+  id: '/create',
+  path: '/create',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const HikesIndexRoute = HikesIndexRouteImport.update({
+  id: '/hikes/',
+  path: '/hikes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HikesSlugRoute = HikesSlugRouteImport.update({
+  id: '/hikes/$slug',
+  path: '/hikes/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/hikes/$slug': typeof HikesSlugRoute
+  '/hikes/': typeof HikesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/hikes/$slug': typeof HikesSlugRoute
+  '/hikes': typeof HikesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/create': typeof CreateRoute
+  '/login': typeof LoginRoute
+  '/signup': typeof SignupRoute
+  '/hikes/$slug': typeof HikesSlugRoute
+  '/hikes/': typeof HikesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/create' | '/login' | '/signup' | '/hikes/$slug' | '/hikes/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/create' | '/login' | '/signup' | '/hikes/$slug' | '/hikes'
+  id:
+    | '__root__'
+    | '/'
+    | '/create'
+    | '/login'
+    | '/signup'
+    | '/hikes/$slug'
+    | '/hikes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CreateRoute: typeof CreateRoute
+  LoginRoute: typeof LoginRoute
+  SignupRoute: typeof SignupRoute
+  HikesSlugRoute: typeof HikesSlugRoute
+  HikesIndexRoute: typeof HikesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/signup': {
+      id: '/signup'
+      path: '/signup'
+      fullPath: '/signup'
+      preLoaderRoute: typeof SignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/create': {
+      id: '/create'
+      path: '/create'
+      fullPath: '/create'
+      preLoaderRoute: typeof CreateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +126,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/hikes/': {
+      id: '/hikes/'
+      path: '/hikes'
+      fullPath: '/hikes/'
+      preLoaderRoute: typeof HikesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hikes/$slug': {
+      id: '/hikes/$slug'
+      path: '/hikes/$slug'
+      fullPath: '/hikes/$slug'
+      preLoaderRoute: typeof HikesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CreateRoute: CreateRoute,
+  LoginRoute: LoginRoute,
+  SignupRoute: SignupRoute,
+  HikesSlugRoute: HikesSlugRoute,
+  HikesIndexRoute: HikesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
