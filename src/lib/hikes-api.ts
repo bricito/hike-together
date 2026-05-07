@@ -209,13 +209,16 @@ export async function createHike(input: {
   if (!u.user) throw new Error("You must be signed in.");
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
+  const { elevation_m, cover_image, ...rest } = input;
   const { data, error } = await supabase
     .from("hikes")
     .insert({
-      ...input,
+      ...rest,
+      elevation_gain_m: elevation_m,
+      cover_image_url: cover_image ?? null,
       slug,
       organizer_id: u.user.id,
-      status: "published",
+      status: "open",
     })
     .select("slug")
     .single();
