@@ -94,8 +94,8 @@ export function toView(h: DbHike): HikeView {
 
 const SELECT = `
   id, slug, organizer_id, title, description, location, meeting_point,
-  starts_at, duration_hours, difficulty, distance_km, elevation_m,
-  max_participants, equipment, cover_image, status, created_at,
+  starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
+  max_participants, equipment, cover_image:cover_image_url, status, created_at,
   organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
   participants:hike_participants ( count )
 `;
