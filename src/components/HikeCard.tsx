@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Clock, TrendingUp, Users, MapPin } from "lucide-react";
-import type { Hike } from "@/lib/hikes-data";
+import type { HikeView } from "@/lib/hikes-api";
 
 const diffStyles: Record<string, string> = {
   Easy: "bg-primary/10 text-primary",
@@ -9,7 +9,7 @@ const diffStyles: Record<string, string> = {
   Expert: "bg-destructive/10 text-destructive",
 };
 
-export function HikeCard({ hike }: { hike: Hike }) {
+export function HikeCard({ hike }: { hike: HikeView }) {
   return (
     <Link
       to="/hikes/$slug"
