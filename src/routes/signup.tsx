@@ -1,9 +1,12 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Mountain } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/signup")({
   head: () => ({ meta: [{ title: "Sign up — BlablaHike" }] }),
@@ -11,6 +14,23 @@ export const Route = createFileRoute("/signup")({
 });
 
 function Signup() {
+  const { signUpEmail, signInWithOAuth } = useAuth();
+  const navigate = useNavigate();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    const { error } = await signUpEmail(email, password, fullName);
+    setLoading(false);
+    if (error) return toast.error(error.message);
+    toast.success("Account created! Check your email to confirm.");
+    navigate({ to: "/hikes" });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -21,16 +41,20 @@ function Signup() {
           </div>
           <h1 className="font-display text-3xl text-center">Join the community</h1>
           <p className="text-sm text-muted-foreground text-center mt-1">Find your hiking crew.</p>
-          <form className="mt-6 space-y-3">
-            <Input placeholder="Full name" className="h-12 rounded-2xl" />
-            <Input type="email" placeholder="Email" className="h-12 rounded-2xl" />
-            <Input type="password" placeholder="Password" className="h-12 rounded-2xl" />
-            <Button className="w-full h-12 rounded-2xl">Create account</Button>
+          <form onSubmit={onSubmit} className="mt-6 space-y-3">
+            <Input required placeholder="Full name" className="h-12 rounded-2xl" value={fullName} onChange={(e) => setFullName(e.target.value)} />
+            <Input required type="email" placeholder="Email" className="h-12 rounded-2xl" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <Input required type="password" minLength={6} placeholder="Password (min 6 chars)" className="h-12 rounded-2xl" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Button type="submit" disabled={loading} className="w-full h-12 rounded-2xl">{loading ? "Creating…" : "Create account"}</Button>
           </form>
+          <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />OR<div className="h-px flex-1 bg-border" /></div>
+          <div className="space-y-2">
+            <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("google")}>Continue with Google</Button>
+            <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("apple")}>Continue with Apple</Button>
+          </div>
           <p className="text-sm text-center text-muted-foreground mt-4">
             Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>
           </p>
-          <p className="text-xs text-center text-muted-foreground mt-6">Auth coming with Lovable Cloud setup</p>
         </div>
       </main>
       <MobileNav />
