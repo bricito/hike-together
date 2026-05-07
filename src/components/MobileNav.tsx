@@ -1,7 +1,9 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Map, PlusCircle, MessageCircle, User } from "lucide-react";
+import { Home, Map, PlusCircle, MessageCircle, User, type LucideIcon } from "lucide-react";
 
-const items: Array<{ to: string; label: string; icon: typeof Home; primary?: boolean }> = [
+type Item = { to: string; label: string; icon: LucideIcon; primary?: boolean };
+
+const items: Item[] = [
   { to: "/", label: "Home", icon: Home },
   { to: "/hikes", label: "Map", icon: Map },
   { to: "/create", label: "Create", icon: PlusCircle, primary: true },
@@ -16,7 +18,7 @@ export function MobileNav() {
         {items.map(({ to, label, icon: Icon, primary }) => (
           <li key={label} className="flex">
             <Link
-              to={to as string}
+              to={to}
               className="flex-1 flex flex-col items-center justify-center gap-0.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
             >
               {primary ? (
@@ -26,7 +28,7 @@ export function MobileNav() {
               ) : (
                 <Icon className="h-5 w-5" />
               )}
-              <span className={primary ? "mt-0" : ""}>{label}</span>
+              <span>{label}</span>
             </Link>
           </li>
         ))}
