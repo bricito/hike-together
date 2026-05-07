@@ -1,13 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { HikeCard } from "@/components/HikeCard";
-import { hikes, type Difficulty } from "@/lib/hikes-data";
+import type { Difficulty } from "@/lib/hikes-data";
+import { fetchPublicHikes } from "@/lib/hikes-api";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/hikes/")({
   head: () => ({
@@ -25,10 +27,10 @@ function HikesPage() {
   const [diff, setDiff] = useState<"All" | Difficulty>("All");
   const [q, setQ] = useState("");
 
-  const list = hikes.filter((h) =>
-    (diff === "All" || h.difficulty === diff) &&
-    (q === "" || h.title.toLowerCase().includes(q.toLowerCase()) || h.location.toLowerCase().includes(q.toLowerCase()))
-  );
+  const { data: list = [], isLoading, isError } = useQuery({
+    queryKey: ["hikes", diff, q],
+    queryFn: () => fetchPublicHikes({ difficulty: diff, search: q || undefined }),
+  });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -59,8 +61,12 @@ function HikesPage() {
       </section>
 
       <section className="container mx-auto px-4 pb-16">
-        {list.length === 0 ? (
-          <p className="text-muted-foreground py-20 text-center">No hikes found. Try different filters.</p>
+        {isLoading ? (
+          <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        ) : isError ? (
+          <p className="text-muted-foreground py-20 text-center">Couldn't load hikes. Try again later.</p>
+        ) : list.length === 0 ? (
+          <p className="text-muted-foreground py-20 text-center">No hikes found. Try different filters or be the first to <a href="/create" className="text-primary underline">create one</a>.</p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {list.map((h) => <HikeCard key={h.id} hike={h} />)}
