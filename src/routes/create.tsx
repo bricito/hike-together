@@ -127,6 +127,17 @@ function Create() {
             <textarea required value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Tell hikers what to expect..." className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
           </Field>
           <Field label="Equipment needed (comma separated)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Boots, water, headlamp" className="h-12 rounded-2xl" /></Field>
+          <div className="grid grid-cols-[2fr_1fr] gap-3">
+            <Field label="Price per person (optional)">
+              <Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="e.g. 12.50 for transport" className="h-12 rounded-2xl" />
+            </Field>
+            <Field label="Currency">
+              <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
+                <option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option>
+              </select>
+            </Field>
+          </div>
+          <p className="text-xs text-muted-foreground -mt-2">Leave empty if the hike is free. Use this to share transport costs (e.g. car ride from city A to trailhead B).</p>
 
           <Button disabled={submitting} className="w-full h-12 rounded-2xl mt-4">
             {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish hike"}
