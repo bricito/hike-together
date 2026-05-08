@@ -83,6 +83,8 @@ function Create() {
         description: form.description,
         equipment: form.equipment.split(",").map((s) => s.trim()).filter(Boolean),
         cover_image: form.cover_image || null,
+        price_cents: form.price ? Math.round(Number(form.price) * 100) : null,
+        currency: form.currency || "EUR",
       });
       toast.success("Hike published!");
       navigate({ to: "/hikes/$slug", params: { slug: res.slug } });
