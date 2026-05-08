@@ -24,10 +24,15 @@ function Signup() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { error } = await signUpEmail(email, password, fullName);
+    const { error, needsConfirmation } = await signUpEmail(email, password, fullName);
     setLoading(false);
     if (error) return toast.error(error.message);
-    toast.success("Account created! Check your email to confirm.");
+    if (needsConfirmation) {
+      toast.success("Check your email to confirm your account before logging in.", { duration: 8000 });
+      navigate({ to: "/login" });
+      return;
+    }
+    toast.success("Welcome to BlablaHike!");
     navigate({ to: "/hikes" });
   };
 
