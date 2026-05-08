@@ -28,8 +28,19 @@ export function HikeCard({ hike }: { hike: HikeView }) {
             {hike.difficulty}
           </span>
         </div>
-        <div className="absolute top-3 right-3 px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
-          {hike.spotsLeft} spots left
+        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+          <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
+            {hike.spotsLeft} spots left
+          </span>
+          {hike.priceCents != null && hike.priceCents > 0 ? (
+            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
+              {(hike.priceCents / 100).toFixed(2)} {hike.currency}
+            </span>
+          ) : (
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
+              Free
+            </span>
+          )}
         </div>
       </div>
       <div className="p-5">
