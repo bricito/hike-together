@@ -25,7 +25,12 @@ function Login() {
     setLoading(true);
     const { error } = await signInEmail(email, password);
     setLoading(false);
-    if (error) return toast.error(error.message);
+    if (error) {
+      if (error.message?.toLowerCase().includes("not confirmed")) {
+        return toast.error("Please confirm your email first — check your inbox for the confirmation link.", { duration: 8000 });
+      }
+      return toast.error(error.message);
+    }
     toast.success("Welcome back!");
     navigate({ to: "/hikes" });
   };

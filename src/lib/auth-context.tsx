@@ -7,7 +7,7 @@ type AuthCtx = {
   session: Session | null;
   loading: boolean;
   signInEmail: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUpEmail: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
+  signUpEmail: (email: string, password: string, fullName: string) => Promise<{ error: Error | null; needsConfirmation: boolean }>;
   signInWithOAuth: (provider: "google" | "apple") => Promise<void>;
   signOut: () => Promise<void>;
 };
@@ -42,12 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     signUpEmail: async (email, password, fullName) => {
       const redirectUrl = `${window.location.origin}/auth/callback`;
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: { emailRedirectTo: redirectUrl, data: { full_name: fullName } },
       });
-      return { error };
+      return { error, needsConfirmation: !error && !data.session };
     },
     signInWithOAuth: async (provider) => {
       await supabase.auth.signInWithOAuth({
