@@ -44,8 +44,21 @@ export type HikeView = {
   description: string;
   meetingPoint: string;
   equipment: string[];
+  priceCents: number | null;
+  currency: string;
   organizer: { id: string; name: string; avatar: string; level: string };
 };
+
+const DIFF_MAP: Record<string, Difficulty> = {
+  easy: "Easy",
+  moderate: "Moderate",
+  hard: "Hard",
+  expert: "Expert",
+};
+function normalizeDifficulty(d: string): Difficulty {
+  const k = (d ?? "").toLowerCase();
+  return DIFF_MAP[k] ?? (d as Difficulty);
+}
 
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80";
@@ -77,12 +90,14 @@ export function toView(h: DbHike): HikeView {
     starts_at: h.starts_at,
     durationHours: h.duration_hours ?? 0,
     elevationM: h.elevation_m ?? 0,
-    difficulty: h.difficulty,
+    difficulty: normalizeDifficulty(h.difficulty as any),
     maxParticipants: h.max_participants,
     spotsLeft: Math.max(0, h.max_participants - joined),
     description: h.description ?? "",
     meetingPoint: h.meeting_point ?? "",
     equipment: h.equipment ?? [],
+    priceCents: (h as any).price_cents ?? null,
+    currency: (h as any).currency ?? "EUR",
     organizer: {
       id: h.organizer?.id ?? h.organizer_id,
       name: h.organizer?.full_name || "Anonymous hiker",
@@ -96,6 +111,7 @@ const SELECT = `
   id, slug, organizer_id, title, description, location, meeting_point,
   starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
   max_participants, equipment, cover_image:cover_image_url, status, created_at,
+  price_cents, currency,
   organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
   participants:hike_participants ( count )
 `;
@@ -124,7 +140,7 @@ export async function fetchPublicHikes(opts?: {
 
   if (opts?.limit) q = q.limit(opts.limit);
   if (opts?.difficulty && opts.difficulty !== "All")
-    q = q.eq("difficulty", opts.difficulty);
+    q = q.eq("difficulty", opts.difficulty.toLowerCase());
   if (opts?.search)
     q = q.or(
       `title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`,
@@ -204,18 +220,23 @@ export async function createHike(input: {
   description: string;
   equipment: string[];
   cover_image?: string | null;
+  price_cents?: number | null;
+  currency?: string;
 }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("You must be signed in.");
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
-  const { elevation_m, cover_image, ...rest } = input;
+  const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
   const { data, error } = await supabase
     .from("hikes")
     .insert({
       ...rest,
+      difficulty: difficulty.toLowerCase(),
       elevation_gain_m: elevation_m,
       cover_image_url: cover_image ?? null,
+      price_cents: price_cents ?? null,
+      currency: currency ?? "EUR",
       slug,
       organizer_id: u.user.id,
       status: "open",

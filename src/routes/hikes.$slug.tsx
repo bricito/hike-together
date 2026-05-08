@@ -156,7 +156,11 @@ function HikeDetail() {
           <div className="rounded-3xl bg-card p-6 shadow-[var(--shadow-elegant)] border border-border">
             <p className="text-sm text-muted-foreground">Join this hike</p>
             <p className="font-display text-2xl mt-1">{hike.spotsLeft} spots left</p>
-            <p className="text-xs text-muted-foreground mt-1">Free · Community organized</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {hike.priceCents != null && hike.priceCents > 0
+                ? `${(hike.priceCents / 100).toFixed(2)} ${hike.currency} per person · Community organized`
+                : "Free · Community organized"}
+            </p>
 
             {isOrganizer ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
