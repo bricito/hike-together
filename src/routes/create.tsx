@@ -34,6 +34,8 @@ function Create() {
     description: "",
     equipment: "",
     cover_image: "",
+    price: "",
+    currency: "EUR",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
