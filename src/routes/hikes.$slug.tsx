@@ -5,8 +5,9 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest } from "@/lib/hikes-api";
+import { fetchHikeRequests, respondToRequest } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/hikes/$slug")({
@@ -76,6 +77,25 @@ function HikeDetail() {
   });
 
   const isOrganizer = user?.id === hike.organizer.id;
+  const canChat = isOrganizer || participation?.status === "accepted";
+
+  // Pending join requests (organizer only)
+  const requestsKey = ["hike-requests", hike.id];
+  const { data: requests = [] } = useQuery({
+    queryKey: requestsKey,
+    queryFn: () => fetchHikeRequests(hike.id),
+    enabled: isOrganizer,
+  });
+  const respondMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "accepted" | "declined" }) =>
+      respondToRequest(id, status),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: requestsKey });
+      toast.success(vars.status === "accepted" ? "Request accepted." : "Request declined.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not update request."),
+  });
+  const pendingRequests = requests.filter((r) => r.status === "pending");
 
   const { data: others = [] } = useQuery({
     queryKey: ["hikes", "others", hike.id],
@@ -210,8 +230,65 @@ function HikeDetail() {
               </Button>
             )}
 
-            {!isOrganizer && <Button variant="outline" className="w-full rounded-2xl mt-2">Message host</Button>}
+            {canChat && (
+              <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
+                <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>Open group chat</Link>
+              </Button>
+            )}
           </div>
+
+          {isOrganizer && (
+            <div className="mt-4 rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] border border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="h-4 w-4 text-primary" />
+                <p className="font-medium text-sm">Join requests</p>
+                {pendingRequests.length > 0 && (
+                  <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                    {pendingRequests.length} pending
+                  </span>
+                )}
+              </div>
+              {pendingRequests.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No pending requests right now.</p>
+              ) : (
+                <ul className="space-y-3">
+                  {pendingRequests.map((r) => (
+                    <li key={r.id} className="flex items-center gap-3">
+                      <img
+                        src={r.user?.avatar_url || "https://i.pravatar.cc/40"}
+                        alt=""
+                        className="h-9 w-9 rounded-full object-cover"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{r.user?.full_name || "Hiker"}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{r.user?.hiking_level || "Hiker"}</p>
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full text-emerald-600 hover:bg-emerald-500/10"
+                        disabled={respondMut.isPending}
+                        onClick={() => respondMut.mutate({ id: r.id, status: "accepted" })}
+                        aria-label="Accept"
+                      >
+                        <Check className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full text-red-600 hover:bg-red-500/10"
+                        disabled={respondMut.isPending}
+                        onClick={() => respondMut.mutate({ id: r.id, status: "declined" })}
+                        aria-label="Decline"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </aside>
       </section>
 

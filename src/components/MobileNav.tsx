@@ -7,8 +7,8 @@ const items: Item[] = [
   { to: "/", label: "Home", icon: Home },
   { to: "/hikes", label: "Map", icon: Map },
   { to: "/create", label: "Create", icon: PlusCircle, primary: true },
-  { to: "/login", label: "Messages", icon: MessageCircle },
-  { to: "/login", label: "Profile", icon: User },
+  { to: "/messages", label: "Messages", icon: MessageCircle },
+  { to: "/notifications", label: "Alerts", icon: User },
 ];
 
 export function MobileNav() {
