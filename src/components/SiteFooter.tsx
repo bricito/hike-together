@@ -12,29 +12,29 @@ export function SiteFooter() {
             <span className="font-display text-lg">BlablaHike</span>
           </div>
           <p className="text-sm text-muted-foreground max-w-xs">
-            Find hiking partners and discover trails near you. Adventure is better together.
+            Trouvez des compagnons de randonnée et découvrez les sentiers près de vous. L'aventure est meilleure ensemble.
           </p>
         </div>
         <div className="text-sm">
-          <h4 className="font-medium mb-3">Discover</h4>
+          <h4 className="font-medium mb-3">Découvrir</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li>Hikes near me</li><li>Popular trails</li><li>Easy hikes</li>
+            <li>Randonnées près de moi</li><li>Sentiers populaires</li><li>Randonnées faciles</li>
           </ul>
         </div>
         <div className="text-sm">
-          <h4 className="font-medium mb-3">Community</h4>
+          <h4 className="font-medium mb-3">Communauté</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li>How it works</li><li>Safety</li><li>Become a host</li>
+            <li>Comment ça marche</li><li>Sécurité</li><li>Devenir animateur</li>
           </ul>
         </div>
         <div className="text-sm">
-          <h4 className="font-medium mb-3">Company</h4>
+          <h4 className="font-medium mb-3">Entreprise</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li>About</li><li>Blog</li><li>Contact</li>
+            <li>À propos</li><li>Blog</li><li>Contact</li>
           </ul>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground text-center mt-10">© 2026 BlablaHike · Made for hikers</p>
+      <p className="text-xs text-muted-foreground text-center mt-10">© 2026 BlablaHike · Conçu pour les randonneurs</p>
     </footer>
   );
 }
