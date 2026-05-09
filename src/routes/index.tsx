@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "BlablaHike — Trouvez des compagnons de randonnée près de vous" },
-      { name: "description", content: "Découvrez des randonnées près de vous et rencontrez des amoureux de plein air. Parcourez les randonnées communautaires, rejoignez des voyages ou organisez votre propre aventure." },
+      { name: "description", content: "Découvrez des randonnées près de vous et rencontrez des amoureux de plein air." },
       { property: "og:title", content: "BlablaHike — Randonnez ensemble" },
       { property: "og:description", content: "Découvrez des randonnées près de vous et rencontrez des amoureux de plein air." },
     ],
@@ -49,7 +49,7 @@ function Index() {
           </p>
 
           {/* Search */}
-          <div className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1f[...]
+          <div className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_auto] gap-1">
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <MapPin className="h-4 w-4 text-primary" />
               <div className="flex-1">
@@ -115,7 +115,7 @@ function Index() {
           <div className="grid md:grid-cols-3 gap-6 mt-12 text-left">
             {[
               { icon: Compass, title: "Découvrir", text: "Parcourez les randonnées près de vous, à tout moment, sans compte requis." },
-              { icon: Users, title: "Rejoindre un groupe", text: "S'inscrire et demander à rejoindre une randonnée qui correspond à votre niveau." },
+              { icon: Users, title: "Rejoindre un groupe", text: "Inscrivez-vous et rejoignez une randonnée qui correspond à votre niveau." },
               { icon: Shield, title: "Randonner en sécurité", text: "Profils vérifiés, évaluations et une communauté amicale." },
             ].map(({ icon: Icon, title, text }) => (
               <div key={title} className="rounded-3xl bg-card p-6 shadow-[var(--shadow-soft)]">
