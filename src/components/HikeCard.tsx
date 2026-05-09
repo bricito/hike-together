@@ -9,6 +9,13 @@ const diffStyles: Record<string, string> = {
   Expert: "bg-destructive/10 text-destructive",
 };
 
+const diffLabels: Record<string, string> = {
+  Easy: "Facile",
+  Moderate: "Modéré",
+  Hard: "Difficile",
+  Expert: "Expert",
+};
+
 export function HikeCard({ hike }: { hike: HikeView }) {
   return (
     <Link
@@ -25,12 +32,12 @@ export function HikeCard({ hike }: { hike: HikeView }) {
         />
         <div className="absolute top-3 left-3">
           <span className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md bg-background/70 ${diffStyles[hike.difficulty]}`}>
-            {hike.difficulty}
+            {diffLabels[hike.difficulty] ?? hike.difficulty}
           </span>
         </div>
         <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
           <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
-            {hike.spotsLeft} spots left
+            {hike.spotsLeft} places restantes
           </span>
           {hike.priceCents != null && hike.priceCents > 0 ? (
             <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
@@ -38,7 +45,7 @@ export function HikeCard({ hike }: { hike: HikeView }) {
             </span>
           ) : (
             <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
-              Free
+              Gratuit
             </span>
           )}
         </div>
@@ -57,7 +64,7 @@ export function HikeCard({ hike }: { hike: HikeView }) {
         </div>
         <div className="flex items-center gap-2 mt-4">
           <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-7 w-7 rounded-full object-cover" />
-          <span className="text-xs text-muted-foreground">Hosted by <span className="text-foreground font-medium">{hike.organizer.name}</span></span>
+          <span className="text-xs text-muted-foreground">Organisé par <span className="text-foreground font-medium">{hike.organizer.name}</span></span>
         </div>
       </div>
     </Link>
