@@ -47,8 +47,8 @@ export function SiteHeader() {
           <span className="font-display text-xl">BlablaHike</span>
         </Link>
         <nav className="hidden md:flex items-center gap-8 text-sm text-muted-foreground">
-          <Link to="/hikes" className="hover:text-foreground transition-colors">Discover</Link>
-          <Link to="/create" className="hover:text-foreground transition-colors">Create a hike</Link>
+          <Link to="/hikes" className="hover:text-foreground transition-colors">Découvrir</Link>
+          <Link to="/create" className="hover:text-foreground transition-colors">Créer une randonnée</Link>
           {user && (
             <Link to="/messages" className="hover:text-foreground transition-colors">Messages</Link>
           )}
@@ -69,17 +69,17 @@ export function SiteHeader() {
                   )}
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" onClick={() => signOut()} aria-label="Sign out">
+              <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" onClick={() => signOut()} aria-label="Se déconnecter">
                 <LogOut className="h-5 w-5" />
               </Button>
             </>
           ) : (
             <>
               <Button asChild variant="ghost" className="hidden sm:inline-flex">
-                <Link to="/login">Log in</Link>
+                <Link to="/login">Se connecter</Link>
               </Button>
               <Button asChild className="rounded-full">
-                <Link to="/signup">Sign up</Link>
+                <Link to="/signup">S'inscrire</Link>
               </Button>
             </>
           )}
