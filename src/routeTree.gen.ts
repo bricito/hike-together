@@ -11,10 +11,13 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as MessagesIndexRouteImport } from './routes/messages.index'
 import { Route as HikesIndexRouteImport } from './routes/hikes.index'
+import { Route as MessagesHikeIdRouteImport } from './routes/messages.$hikeId'
 import { Route as HikesSlugRouteImport } from './routes/hikes.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 
@@ -26,6 +29,11 @@ const SignupRoute = SignupRouteImport.update({
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificationsRoute = NotificationsRouteImport.update({
+  id: '/notifications',
+  path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -43,9 +51,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MessagesIndexRoute = MessagesIndexRouteImport.update({
+  id: '/messages/',
+  path: '/messages/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HikesIndexRoute = HikesIndexRouteImport.update({
   id: '/hikes/',
   path: '/hikes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesHikeIdRoute = MessagesHikeIdRouteImport.update({
+  id: '/messages/$hikeId',
+  path: '/messages/$hikeId',
   getParentRoute: () => rootRouteImport,
 } as any)
 const HikesSlugRoute = HikesSlugRouteImport.update({
@@ -63,32 +81,41 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
+  '/messages/$hikeId': typeof MessagesHikeIdRoute
   '/hikes/': typeof HikesIndexRoute
+  '/messages/': typeof MessagesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
+  '/messages/$hikeId': typeof MessagesHikeIdRoute
   '/hikes': typeof HikesIndexRoute
+  '/messages': typeof MessagesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
+  '/messages/$hikeId': typeof MessagesHikeIdRoute
   '/hikes/': typeof HikesIndexRoute
+  '/messages/': typeof MessagesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -96,42 +123,54 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/login'
+    | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
+    | '/messages/$hikeId'
     | '/hikes/'
+    | '/messages/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/create'
     | '/login'
+    | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
+    | '/messages/$hikeId'
     | '/hikes'
+    | '/messages'
   id:
     | '__root__'
     | '/'
     | '/create'
     | '/login'
+    | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
+    | '/messages/$hikeId'
     | '/hikes/'
+    | '/messages/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreateRoute: typeof CreateRoute
   LoginRoute: typeof LoginRoute
+  NotificationsRoute: typeof NotificationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   HikesSlugRoute: typeof HikesSlugRoute
+  MessagesHikeIdRoute: typeof MessagesHikeIdRoute
   HikesIndexRoute: typeof HikesIndexRoute
+  MessagesIndexRoute: typeof MessagesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -148,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/reset-password'
       fullPath: '/reset-password'
       preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notifications': {
+      id: '/notifications'
+      path: '/notifications'
+      fullPath: '/notifications'
+      preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -171,11 +217,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/messages/': {
+      id: '/messages/'
+      path: '/messages'
+      fullPath: '/messages/'
+      preLoaderRoute: typeof MessagesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/hikes/': {
       id: '/hikes/'
       path: '/hikes'
       fullPath: '/hikes/'
       preLoaderRoute: typeof HikesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages/$hikeId': {
+      id: '/messages/$hikeId'
+      path: '/messages/$hikeId'
+      fullPath: '/messages/$hikeId'
+      preLoaderRoute: typeof MessagesHikeIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hikes/$slug': {
@@ -199,12 +259,25 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
   LoginRoute: LoginRoute,
+  NotificationsRoute: NotificationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   HikesSlugRoute: HikesSlugRoute,
+  MessagesHikeIdRoute: MessagesHikeIdRoute,
   HikesIndexRoute: HikesIndexRoute,
+  MessagesIndexRoute: MessagesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
