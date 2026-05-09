@@ -13,10 +13,10 @@ import { fetchPublicHikes } from "@/lib/hikes-api";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "BlablaHike — Find hiking partners near you" },
-      { name: "description", content: "Discover hikes near you and meet outdoor people. Browse community hikes, join trips, or host your own adventure." },
-      { property: "og:title", content: "BlablaHike — Hike together" },
-      { property: "og:description", content: "Discover hikes near you and meet outdoor people." },
+      { title: "BlablaHike — Trouvez des compagnons de randonnée près de vous" },
+      { name: "description", content: "Découvrez des randonnées près de vous et rencontrez des amoureux de plein air. Parcourez les randonnées communautaires, rejoignez des voyages ou organisez votre propre aventure." },
+      { property: "og:title", content: "BlablaHike — Randonnez ensemble" },
+      { property: "og:description", content: "Découvrez des randonnées près de vous et rencontrez des amoureux de plein air." },
     ],
   }),
   component: Index,
@@ -34,56 +34,56 @@ function Index() {
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0">
-          <img src={heroImg} alt="Misty mountain valley at sunrise" width={1920} height={1280} className="h-full w-full object-cover" />
+          <img src={heroImg} alt="Vallée de montagne brumeuse au lever du soleil" width={1920} height={1280} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/20 via-background/30 to-background" />
         </div>
         <div className="relative container mx-auto px-4 pt-20 pb-32 md:pt-32 md:pb-44 text-center">
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-background/80 backdrop-blur-md text-xs font-medium text-primary border border-border animate-fade-in">
-            <Compass className="h-3.5 w-3.5" /> 1,200+ hikers near you this week
+            <Compass className="h-3.5 w-3.5" /> 1 200+ randonneurs près de vous cette semaine
           </span>
           <h1 className="mt-6 font-display text-5xl md:text-7xl text-foreground max-w-3xl mx-auto leading-[1.05] animate-fade-up">
-            Hike together. <span className="text-primary">Wander further.</span>
+            Randonnez ensemble. <span className="text-primary">Explorez plus loin.</span>
           </h1>
           <p className="mt-5 text-base md:text-lg text-muted-foreground max-w-xl mx-auto animate-fade-up" style={{ animationDelay: "80ms" }}>
-            Discover hikes near you and meet outdoor people who share your love for trails, summits and quiet forests.
+            Découvrez les randonnées près de vous et rencontrez des amoureux de plein air qui partagent votre passion pour les sentiers, les sommets et les forêts silencieuses.
           </p>
 
           {/* Search */}
-          <div className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_auto] gap-2 animate-fade-up" style={{ animationDelay: "160ms" }}>
+          <div className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1f[...]
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <MapPin className="h-4 w-4 text-primary" />
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Where</div>
-                <Input placeholder="Anywhere" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm" />
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Où</div>
+                <Input placeholder="N'importe où" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm" />
               </div>
             </label>
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <Calendar className="h-4 w-4 text-primary" />
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">When</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Quand</div>
                 <Input type="date" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm" />
               </div>
             </label>
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <Mountain className="h-4 w-4 text-primary" />
               <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Difficulty</div>
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Difficulté</div>
                 <select className="w-full bg-transparent text-sm outline-none">
-                  <option>Any level</option><option>Easy</option><option>Moderate</option><option>Hard</option><option>Expert</option>
+                  <option>Tous les niveaux</option><option>Facile</option><option>Moyen</option><option>Difficile</option><option>Expert</option>
                 </select>
               </div>
             </label>
             <Button asChild size="lg" className="rounded-2xl h-auto md:px-6">
-              <Link to="/hikes"><Search className="h-4 w-4" /> Search</Link>
+              <Link to="/hikes"><Search className="h-4 w-4" /> Rechercher</Link>
             </Button>
           </div>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 animate-fade-up" style={{ animationDelay: "240ms" }}>
             <Button asChild size="lg" className="rounded-full">
-              <Link to="/hikes">Find a hike</Link>
+              <Link to="/hikes">Trouver une randonnée</Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="rounded-full bg-background/80 backdrop-blur">
-              <Link to="/create">Create a hike</Link>
+              <Link to="/create">Créer une randonnée</Link>
             </Button>
           </div>
         </div>
@@ -93,13 +93,13 @@ function Index() {
       <section className="container mx-auto px-4 py-16 md:py-20">
         <div className="flex items-end justify-between mb-8">
           <div>
-            <h2 className="font-display text-3xl md:text-4xl">Featured hikes nearby</h2>
-            <p className="text-muted-foreground mt-2">Handpicked trips from our community this week.</p>
+            <h2 className="font-display text-3xl md:text-4xl">Randonnées phares à proximité</h2>
+            <p className="text-muted-foreground mt-2">Voyages sélectionnés de notre communauté cette semaine.</p>
           </div>
-          <Link to="/hikes" className="hidden md:inline text-sm text-primary hover:underline">View all →</Link>
+          <Link to="/hikes" className="hidden md:inline text-sm text-primary hover:underline">Voir tout →</Link>
         </div>
         {featured.length === 0 ? (
-          <p className="text-muted-foreground text-center py-10">No hikes yet. <Link to="/create" className="text-primary underline">Be the first to host one!</Link></p>
+          <p className="text-muted-foreground text-center py-10">Pas encore de randonnées. <Link to="/create" className="text-primary underline">Soyez le premier à en organiser une !</Link></p>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {featured.map((h) => <HikeCard key={h.id} hike={h} />)}
@@ -110,13 +110,13 @@ function Index() {
       {/* HOW IT WORKS */}
       <section className="container mx-auto px-4 py-16">
         <div className="rounded-4xl bg-secondary/60 p-10 md:p-16 text-center">
-          <h2 className="font-display text-3xl md:text-4xl">How BlablaHike works</h2>
-          <p className="text-muted-foreground mt-3 max-w-xl mx-auto">A trusted community of hikers, three simple steps.</p>
+          <h2 className="font-display text-3xl md:text-4xl">Comment fonctionne BlablaHike</h2>
+          <p className="text-muted-foreground mt-3 max-w-xl mx-auto">Une communauté de randonneurs de confiance, trois étapes simples.</p>
           <div className="grid md:grid-cols-3 gap-6 mt-12 text-left">
             {[
-              { icon: Compass, title: "Discover", text: "Browse hikes near you, anytime, no account needed." },
-              { icon: Users, title: "Join a group", text: "Sign up and request to join a hike that matches your level." },
-              { icon: Shield, title: "Hike safely", text: "Verified profiles, ratings and a friendly community." },
+              { icon: Compass, title: "Découvrir", text: "Parcourez les randonnées près de vous, à tout moment, sans compte requis." },
+              { icon: Users, title: "Rejoindre un groupe", text: "S'inscrire et demander à rejoindre une randonnée qui correspond à votre niveau." },
+              { icon: Shield, title: "Randonner en sécurité", text: "Profils vérifiés, évaluations et une communauté amicale." },
             ].map(({ icon: Icon, title, text }) => (
               <div key={title} className="rounded-3xl bg-card p-6 shadow-[var(--shadow-soft)]">
                 <span className="h-11 w-11 rounded-2xl bg-primary/10 text-primary grid place-items-center mb-4">
