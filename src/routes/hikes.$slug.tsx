@@ -77,6 +77,25 @@ function HikeDetail() {
   });
 
   const isOrganizer = user?.id === hike.organizer.id;
+  const canChat = isOrganizer || participation?.status === "accepted";
+
+  // Pending join requests (organizer only)
+  const requestsKey = ["hike-requests", hike.id];
+  const { data: requests = [] } = useQuery({
+    queryKey: requestsKey,
+    queryFn: () => fetchHikeRequests(hike.id),
+    enabled: isOrganizer,
+  });
+  const respondMut = useMutation({
+    mutationFn: ({ id, status }: { id: string; status: "accepted" | "declined" }) =>
+      respondToRequest(id, status),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: requestsKey });
+      toast.success(vars.status === "accepted" ? "Request accepted." : "Request declined.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Could not update request."),
+  });
+  const pendingRequests = requests.filter((r) => r.status === "pending");
 
   const { data: others = [] } = useQuery({
     queryKey: ["hikes", "others", hike.id],
