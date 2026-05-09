@@ -4,11 +4,11 @@ import { Home, Map, PlusCircle, MessageCircle, User, type LucideIcon } from "luc
 type Item = { to: string; label: string; icon: LucideIcon; primary?: boolean };
 
 const items: Item[] = [
-  { to: "/", label: "Home", icon: Home },
-  { to: "/hikes", label: "Map", icon: Map },
-  { to: "/create", label: "Create", icon: PlusCircle, primary: true },
+  { to: "/", label: "Accueil", icon: Home },
+  { to: "/hikes", label: "Carte", icon: Map },
+  { to: "/create", label: "Créer", icon: PlusCircle, primary: true },
   { to: "/messages", label: "Messages", icon: MessageCircle },
-  { to: "/notifications", label: "Alerts", icon: User },
+  { to: "/notifications", label: "Alertes", icon: User },
 ];
 
 export function MobileNav() {
