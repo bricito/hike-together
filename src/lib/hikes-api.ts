@@ -19,6 +19,8 @@ export type DbHike = {
   cover_image: string | null;
   status: string;
   created_at: string;
+  lat: number | null;
+  lng: number | null;
   organizer?: {
     id: string;
     full_name: string | null;
@@ -113,7 +115,7 @@ const SELECT = `
   id, slug, organizer_id, title, description, location, meeting_point,
   starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
   max_participants, equipment, cover_image:cover_image_url, status, created_at,
-  price_cents, currency,
+  price_cents, currency, lat, lng,
   organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
   participants:hike_participants ( count )
 `;
@@ -156,15 +158,6 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Geocode une liste de locations (avec cache simple)
-const geoCache: Record<string, { lat: number; lon: number } | null> = {};
-async function geocodeLocation(location: string) {
-  if (location in geoCache) return geoCache[location];
-  const result = await geocode(location);
-  geoCache[location] = result;
-  return result;
-}
-
 export async function fetchPublicHikes(opts?: {
   limit?: number;
   search?: string;
@@ -188,23 +181,27 @@ export async function fetchPublicHikes(opts?: {
   const { data, error } = await q;
   if (error) throw error;
 
-  let hikes = normalize(data as any[]);
+  const hikes = normalize(data as any[]);
 
-  // Filtrage géographique par proximité
+  // Filtrage géographique par proximité en utilisant les coordonnées stockées
   if (opts?.nearLocation) {
     const origin = await geocode(opts.nearLocation);
     if (origin) {
       const radius = opts.radiusKm ?? 50;
       const withDistance: { hike: DbHike; km: number }[] = [];
 
-      await Promise.all(
-        hikes.map(async (hike) => {
-          const coords = await geocodeLocation(hike.location);
-          if (!coords) return;
-          const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
-          if (km <= radius) withDistance.push({ hike, km });
-        })
-      );
+      for (const hike of hikes) {
+        // Utilise les coordonnées stockées si disponibles, sinon géocode à la volée
+        let coords: { lat: number; lon: number } | null = null;
+        if (hike.lat && hike.lng) {
+          coords = { lat: hike.lat, lon: hike.lng };
+        } else {
+          coords = await geocode(hike.location);
+        }
+        if (!coords) continue;
+        const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
+        if (km <= radius) withDistance.push({ hike, km });
+      }
 
       withDistance.sort((a, b) => a.km - b.km);
       return withDistance.map(({ hike, km }) => toView(hike, Math.round(km)));
@@ -288,6 +285,10 @@ export async function createHike(input: {
 }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Vous devez être connecté.");
+
+  // Géocode la location à la création
+  const coords = await geocode(input.location);
+
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
   const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
@@ -303,6 +304,8 @@ export async function createHike(input: {
       slug,
       organizer_id: u.user.id,
       status: "open",
+      lat: coords?.lat ?? null,
+      lng: coords?.lon ?? null,
     })
     .select("slug")
     .single();
