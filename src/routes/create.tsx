@@ -12,7 +12,7 @@ import type { Difficulty } from "@/lib/hikes-data";
 import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/create")({
-  head: () => ({ meta: [{ title: "Create a hike — BlablaHike" }] }),
+  head: () => ({ meta: [{ title: "Créer une randonnée — BlablaHike" }] }),
   component: Create,
 });
 
@@ -36,6 +36,7 @@ function Create() {
     cover_image: "",
     price: "",
     currency: "EUR",
+    reference_link: "",
   });
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
@@ -49,11 +50,11 @@ function Create() {
       <div className="min-h-screen flex flex-col">
         <SiteHeader />
         <main className="container mx-auto px-4 py-20 max-w-md text-center">
-          <h1 className="font-display text-3xl">Sign in to host a hike</h1>
-          <p className="text-muted-foreground mt-2">Create an account to share trips with the community.</p>
+          <h1 className="font-display text-3xl">Connectez-vous pour organiser une randonnée</h1>
+          <p className="text-muted-foreground mt-2">Créez un compte pour partager vos aventures avec la communauté.</p>
           <div className="mt-6 flex gap-3 justify-center">
-            <Button asChild className="rounded-2xl"><Link to="/signup">Sign up</Link></Button>
-            <Button asChild variant="outline" className="rounded-2xl"><Link to="/login">Log in</Link></Button>
+            <Button asChild className="rounded-2xl"><Link to="/signup">S'inscrire</Link></Button>
+            <Button asChild variant="outline" className="rounded-2xl"><Link to="/login">Se connecter</Link></Button>
           </div>
         </main>
         <SiteFooter />
@@ -65,7 +66,7 @@ function Create() {
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!form.date || !form.time) {
-      toast.error("Pick a date and time.");
+      toast.error("Veuillez choisir une date et une heure.");
       return;
     }
     setSubmitting(true);
@@ -86,10 +87,10 @@ function Create() {
         price_cents: form.price ? Math.round(Number(form.price) * 100) : null,
         currency: form.currency || "EUR",
       });
-      toast.success("Hike published!");
+      toast.success("Randonnée publiée !");
       navigate({ to: "/hikes/$slug", params: { slug: res.slug } });
     } catch (err: any) {
-      toast.error(err.message ?? "Could not create hike.");
+      toast.error(err.message ?? "Impossible de créer la randonnée.");
     } finally {
       setSubmitting(false);
     }
@@ -99,48 +100,57 @@ function Create() {
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
       <main className="container mx-auto px-4 py-12 max-w-2xl">
-        <h1 className="font-display text-4xl md:text-5xl">Create a hike</h1>
-        <p className="text-muted-foreground mt-2">Share your next adventure with the community.</p>
+        <h1 className="font-display text-4xl md:text-5xl">Créer une randonnée</h1>
+        <p className="text-muted-foreground mt-2">Partagez votre prochaine aventure avec la communauté.</p>
 
         <form onSubmit={onSubmit} className="mt-8 space-y-4">
-          <Field label="Hike title"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Sunrise loop at Emerald Lake" className="h-12 rounded-2xl" /></Field>
-          <Field label="Location"><Input required value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Chamonix, France" className="h-12 rounded-2xl" /></Field>
+          <Field label="Titre de la randonnée"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} placeholder="Boucle du lever de soleil au Lac Vert" className="h-12 rounded-2xl" /></Field>
+          <Field label="Lieu"><Input required value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Chamonix, France" className="h-12 rounded-2xl" /></Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Date"><Input required type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className="h-12 rounded-2xl" /></Field>
-            <Field label="Time"><Input required type="time" value={form.time} onChange={(e) => set("time", e.target.value)} className="h-12 rounded-2xl" /></Field>
+            <Field label="Heure"><Input required type="time" value={form.time} onChange={(e) => set("time", e.target.value)} className="h-12 rounded-2xl" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Duration (h)"><Input type="number" min={1} value={form.duration_hours} onChange={(e) => set("duration_hours", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
-            <Field label="Elevation gain (m)"><Input type="number" min={0} value={form.elevation_m} onChange={(e) => set("elevation_m", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+            <Field label="Durée (h)"><Input type="number" min={1} value={form.duration_hours} onChange={(e) => set("duration_hours", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+            <Field label="Dénivelé (m)"><Input type="number" min={0} value={form.elevation_m} onChange={(e) => set("elevation_m", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Difficulty">
+            <Field label="Difficulté">
               <select value={form.difficulty} onChange={(e) => set("difficulty", e.target.value as Difficulty)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
-                <option>Easy</option><option>Moderate</option><option>Hard</option><option>Expert</option>
+                <option value="Easy">Facile</option>
+                <option value="Moderate">Modéré</option>
+                <option value="Hard">Difficile</option>
+                <option value="Expert">Expert</option>
               </select>
             </Field>
-            <Field label="Max participants"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+            <Field label="Nombre de participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
-          <Field label="Meeting point"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} placeholder="Parking des Praz" className="h-12 rounded-2xl" /></Field>
-          <Field label="Cover image URL (optional)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
-          <Field label="Description">
-            <textarea required value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Tell hikers what to expect..." className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
+          <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} placeholder="Parking des Praz" className="h-12 rounded-2xl" /></Field>
+          <Field label="URL de l'image de couverture (optionnel)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
+          <Field label="Lien de référence">
+            <Input value={form.reference_link} onChange={(e) => set("reference_link", e.target.value)} placeholder="https://www.alltrails.com/trail/..." className="h-12 rounded-2xl" />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              📎 Collez ici le lien de votre itinéraire depuis <span className="font-medium text-foreground">AllTrails</span>, <span className="font-medium text-foreground">Visorando</span>, <span className="font-medium text-foreground">Komoot</span> ou toute autre plateforme — les participants pourront consulter le tracé et les détails complets.
+            </p>
           </Field>
-          <Field label="Equipment needed (comma separated)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Boots, water, headlamp" className="h-12 rounded-2xl" /></Field>
+          <Field label="Description">
+            <textarea required value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Décrivez ce que les participants peuvent attendre..." className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
+          </Field>
+          <Field label="Équipement nécessaire (séparé par des virgules)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Chaussures de rando, eau, lampe frontale" className="h-12 rounded-2xl" /></Field>
           <div className="grid grid-cols-[2fr_1fr] gap-3">
-            <Field label="Price per person (optional)">
-              <Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="e.g. 12.50 for transport" className="h-12 rounded-2xl" />
+            <Field label="Prix par personne (optionnel)">
+              <Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="ex. 12.50 pour le transport" className="h-12 rounded-2xl" />
             </Field>
-            <Field label="Currency">
+            <Field label="Devise">
               <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
                 <option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option>
               </select>
             </Field>
           </div>
-          <p className="text-xs text-muted-foreground -mt-2">Leave empty if the hike is free. Use this to share transport costs (e.g. car ride from city A to trailhead B).</p>
+          <p className="text-xs text-muted-foreground -mt-2">Laissez vide si la randonnée est gratuite. Utilisez ce champ pour partager les frais de transport.</p>
 
           <Button disabled={submitting} className="w-full h-12 rounded-2xl mt-4">
-            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publish hike"}
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Publier la randonnée"}
           </Button>
         </form>
       </main>
