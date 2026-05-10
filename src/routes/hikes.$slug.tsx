@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest } from "@/lib/hikes-api";
 import { fetchHikeRequests, respondToRequest } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
@@ -18,11 +18,11 @@ export const Route = createFileRoute("/hikes/$slug")({
   },
   head: ({ loaderData }) => {
     const h = loaderData?.hike;
-    if (!h) return { meta: [{ title: "Hike — BlablaHike" }] };
+    if (!h) return { meta: [{ title: "Randonnée — BlablaHike" }] };
     return {
       meta: [
         { title: `${h.title} — BlablaHike` },
-        { name: "description", content: `${h.title} in ${h.location}. ${h.difficulty} hike, ${h.durationHours}h, ${h.elevationM}m elevation. Join the group on BlablaHike.` },
+        { name: "description", content: `${h.title} à ${h.location}. Randonnée ${h.difficulty}, ${h.durationHours}h, ${h.elevationM}m de dénivelé. Rejoignez le groupe sur BlablaHike.` },
         { property: "og:title", content: h.title },
         { property: "og:description", content: `${h.location} · ${h.date}` },
         { property: "og:image", content: h.image },
@@ -32,8 +32,10 @@ export const Route = createFileRoute("/hikes/$slug")({
   },
   notFoundComponent: () => (
     <div className="min-h-screen grid place-items-center">
-      <div className="text-center"><h1 className="font-display text-3xl">Hike not found</h1>
-        <Link to="/hikes" className="text-primary hover:underline mt-3 inline-block">Browse hikes</Link></div>
+      <div className="text-center">
+        <h1 className="font-display text-3xl">Randonnée introuvable</h1>
+        <Link to="/hikes" className="text-primary hover:underline mt-3 inline-block">Voir toutes les randonnées</Link>
+      </div>
     </div>
   ),
   errorComponent: ({ error }) => (
@@ -62,22 +64,21 @@ function HikeDetail() {
     mutationFn: () => requestToJoinHike(hike.id),
     onSuccess: (data) => {
       qc.setQueryData(participationKey, data);
-      toast.success("Request sent! The host will review it shortly.");
+      toast.success("Demande envoyée ! L'organisateur va l'examiner.");
     },
-    onError: (e: any) => toast.error(e.message ?? "Could not send request."),
+    onError: (e: any) => toast.error(e.message ?? "Impossible d'envoyer la demande."),
   });
 
   const cancelMut = useMutation({
     mutationFn: () => cancelJoinRequest(participation!.id),
     onSuccess: () => {
       qc.setQueryData(participationKey, null);
-      toast.success("Request cancelled.");
+      toast.success("Demande annulée.");
     },
-    onError: (e: any) => toast.error(e.message ?? "Could not cancel request."),
+    onError: (e: any) => toast.error(e.message ?? "Impossible d'annuler la demande."),
   });
 
   const isOrganizer = user?.id === hike.organizer.id;
-  const canChat = isOrganizer || participation?.status === "accepted";
 
   // Pending join requests (organizer only)
   const requestsKey = ["hike-requests", hike.id];
@@ -91,9 +92,9 @@ function HikeDetail() {
       respondToRequest(id, status),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: requestsKey });
-      toast.success(vars.status === "accepted" ? "Request accepted." : "Request declined.");
+      toast.success(vars.status === "accepted" ? "Demande acceptée." : "Demande refusée.");
     },
-    onError: (e: any) => toast.error(e.message ?? "Could not update request."),
+    onError: (e: any) => toast.error(e.message ?? "Impossible de mettre à jour la demande."),
   });
   const pendingRequests = requests.filter((r) => r.status === "pending");
 
@@ -108,7 +109,7 @@ function HikeDetail() {
       <SiteHeader />
 
       <div className="container mx-auto px-4 pt-6">
-        <Link to="/hikes" className="text-sm text-muted-foreground hover:text-foreground">← Back to hikes</Link>
+        <Link to="/hikes" className="text-sm text-muted-foreground hover:text-foreground">← Retour aux randonnées</Link>
       </div>
 
       <section className="container mx-auto px-4 pt-4">
@@ -127,40 +128,63 @@ function HikeDetail() {
 
           <div className="flex flex-wrap gap-6 mt-6 text-sm">
             <Stat icon={Calendar} label="Date" value={hike.date} />
-            <Stat icon={Clock} label="Duration" value={`${hike.durationHours}h`} />
-            <Stat icon={TrendingUp} label="Elevation" value={`${hike.elevationM}m`} />
-            <Stat icon={Users} label="Group" value={`${hike.maxParticipants - hike.spotsLeft}/${hike.maxParticipants}`} />
+            <Stat icon={Clock} label="Durée" value={`${hike.durationHours}h`} />
+            <Stat icon={TrendingUp} label="Dénivelé" value={`${hike.elevationM}m`} />
+            <Stat icon={Users} label="Groupe" value={`${hike.maxParticipants - hike.spotsLeft}/${hike.maxParticipants}`} />
           </div>
 
           <div className="mt-10 flex items-center gap-4 p-5 rounded-3xl bg-card shadow-[var(--shadow-soft)]">
             <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-14 w-14 rounded-full object-cover" />
-            <div>
-              <p className="text-xs text-muted-foreground">Hosted by</p>
+            <div className="flex-1">
+              <p className="text-xs text-muted-foreground">Organisé par</p>
               <p className="font-medium">{hike.organizer.name}</p>
-              <p className="text-xs text-muted-foreground">{hike.organizer.level} hiker</p>
+              <p className="text-xs text-muted-foreground">Randonneur {hike.organizer.level}</p>
             </div>
+            {/* Bouton contacter l'organisateur — visible pour tout utilisateur connecté sauf l'organisateur */}
+            {user && !isOrganizer && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-2xl gap-1.5"
+              >
+                <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+                  <MessageCircle className="h-4 w-4" /> Contacter
+                </Link>
+              </Button>
+            )}
+            {!user && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="rounded-2xl gap-1.5"
+                onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
+              >
+                <MessageCircle className="h-4 w-4" /> Contacter
+              </Button>
+            )}
           </div>
 
           <div className="mt-10">
-            <h2 className="font-display text-2xl mb-3">About this hike</h2>
+            <h2 className="font-display text-2xl mb-3">À propos de cette randonnée</h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{hike.description}</p>
           </div>
 
           <div className="mt-10">
-            <h2 className="font-display text-2xl mb-3">Meeting point</h2>
+            <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
             <div className="rounded-3xl overflow-hidden border border-border bg-secondary/40 aspect-[16/9] grid place-items-center text-muted-foreground relative">
               <div className="absolute inset-0 opacity-50" style={{ background: "radial-gradient(circle at 30% 40%, var(--primary-glow), transparent 60%), radial-gradient(circle at 70% 70%, var(--accent), transparent 50%)" }} />
               <div className="relative text-center">
                 <Mountain className="h-10 w-10 mx-auto text-primary" />
-                <p className="mt-2 font-medium text-foreground">{hike.meetingPoint || "Shared after you join"}</p>
-                <p className="text-xs">Interactive map coming soon</p>
+                <p className="mt-2 font-medium text-foreground">{hike.meetingPoint || "Partagé après votre inscription"}</p>
+                <p className="text-xs">Carte interactive à venir</p>
               </div>
             </div>
           </div>
 
           {hike.equipment.length > 0 && (
             <div className="mt-10">
-              <h2 className="font-display text-2xl mb-3">What to bring</h2>
+              <h2 className="font-display text-2xl mb-3">Ce qu'il faut apporter</h2>
               <ul className="grid sm:grid-cols-2 gap-2">
                 {hike.equipment.map((e: string) => (
                   <li key={e} className="flex items-center gap-2 p-3 rounded-2xl bg-secondary/50 text-sm">
@@ -174,17 +198,17 @@ function HikeDetail() {
 
         <aside className="lg:sticky lg:top-24 h-fit">
           <div className="rounded-3xl bg-card p-6 shadow-[var(--shadow-elegant)] border border-border">
-            <p className="text-sm text-muted-foreground">Join this hike</p>
-            <p className="font-display text-2xl mt-1">{hike.spotsLeft} spots left</p>
+            <p className="text-sm text-muted-foreground">Rejoindre cette randonnée</p>
+            <p className="font-display text-2xl mt-1">{hike.spotsLeft} places restantes</p>
             <p className="text-xs text-muted-foreground mt-1">
               {hike.priceCents != null && hike.priceCents > 0
-                ? `${(hike.priceCents / 100).toFixed(2)} ${hike.currency} per person · Community organized`
-                : "Free · Community organized"}
+                ? `${(hike.priceCents / 100).toFixed(2)} ${hike.currency} par personne · Organisé par la communauté`
+                : "Gratuit · Organisé par la communauté"}
             </p>
 
             {isOrganizer ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
-                You're hosting this hike
+                Vous organisez cette randonnée
               </div>
             ) : !user ? (
               <>
@@ -193,14 +217,14 @@ function HikeDetail() {
                   className="w-full rounded-2xl mt-5"
                   onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
                 >
-                  Sign up to join
+                  Connectez-vous pour rejoindre
                 </Button>
-                <p className="text-[11px] text-muted-foreground text-center mt-3">You'll need an account to join</p>
+                <p className="text-[11px] text-muted-foreground text-center mt-3">Un compte est nécessaire pour rejoindre</p>
               </>
             ) : participation?.status === "pending" ? (
               <>
                 <div className="mt-5 p-3 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm text-center font-medium flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Request pending
+                  <Loader2 className="h-4 w-4 animate-spin" /> Demande en attente
                 </div>
                 <Button
                   variant="outline"
@@ -208,16 +232,23 @@ function HikeDetail() {
                   disabled={cancelMut.isPending}
                   onClick={() => cancelMut.mutate()}
                 >
-                  <X className="h-4 w-4" /> Cancel request
+                  <X className="h-4 w-4" /> Annuler la demande
                 </Button>
               </>
             ) : participation?.status === "accepted" ? (
-              <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
-                <Check className="h-4 w-4" /> You're going!
-              </div>
+              <>
+                <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                  <Check className="h-4 w-4" /> Vous participez !
+                </div>
+                <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
+                  <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+                    <MessageCircle className="h-4 w-4 mr-1" /> Chat du groupe
+                  </Link>
+                </Button>
+              </>
             ) : participation?.status === "declined" ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
-                Your request wasn't accepted this time.
+                Votre demande n'a pas été retenue cette fois.
               </div>
             ) : (
               <Button
@@ -226,13 +257,7 @@ function HikeDetail() {
                 disabled={joinMut.isPending || hike.spotsLeft === 0}
                 onClick={() => joinMut.mutate()}
               >
-                {joinMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : hike.spotsLeft === 0 ? "Hike full" : "Request to join"}
-              </Button>
-            )}
-
-            {canChat && (
-              <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
-                <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>Open group chat</Link>
+                {joinMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : hike.spotsLeft === 0 ? "Randonnée complète" : "Demander à rejoindre"}
               </Button>
             )}
           </div>
@@ -241,15 +266,15 @@ function HikeDetail() {
             <div className="mt-4 rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] border border-border">
               <div className="flex items-center gap-2 mb-3">
                 <UserPlus className="h-4 w-4 text-primary" />
-                <p className="font-medium text-sm">Join requests</p>
+                <p className="font-medium text-sm">Demandes de participation</p>
                 {pendingRequests.length > 0 && (
                   <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                    {pendingRequests.length} pending
+                    {pendingRequests.length} en attente
                   </span>
                 )}
               </div>
               {pendingRequests.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No pending requests right now.</p>
+                <p className="text-xs text-muted-foreground">Aucune demande en attente.</p>
               ) : (
                 <ul className="space-y-3">
                   {pendingRequests.map((r) => (
@@ -260,8 +285,8 @@ function HikeDetail() {
                         className="h-9 w-9 rounded-full object-cover"
                       />
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.user?.full_name || "Hiker"}</p>
-                        <p className="text-[11px] text-muted-foreground truncate">{r.user?.hiking_level || "Hiker"}</p>
+                        <p className="text-sm font-medium truncate">{r.user?.full_name || "Randonneur"}</p>
+                        <p className="text-[11px] text-muted-foreground truncate">{r.user?.hiking_level || "Randonneur"}</p>
                       </div>
                       <Button
                         size="icon"
@@ -269,7 +294,7 @@ function HikeDetail() {
                         className="h-8 w-8 rounded-full text-emerald-600 hover:bg-emerald-500/10"
                         disabled={respondMut.isPending}
                         onClick={() => respondMut.mutate({ id: r.id, status: "accepted" })}
-                        aria-label="Accept"
+                        aria-label="Accepter"
                       >
                         <Check className="h-4 w-4" />
                       </Button>
@@ -279,7 +304,7 @@ function HikeDetail() {
                         className="h-8 w-8 rounded-full text-red-600 hover:bg-red-500/10"
                         disabled={respondMut.isPending}
                         onClick={() => respondMut.mutate({ id: r.id, status: "declined" })}
-                        aria-label="Decline"
+                        aria-label="Refuser"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -294,7 +319,7 @@ function HikeDetail() {
 
       {others.length > 0 && (
         <section className="container mx-auto px-4 mt-20">
-          <h2 className="font-display text-2xl mb-6">Other hikes you might like</h2>
+          <h2 className="font-display text-2xl mb-6">D'autres randonnées qui pourraient vous plaire</h2>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((h) => (
               <Link key={h.id} to="/hikes/$slug" params={{ slug: h.slug }} className="group rounded-3xl overflow-hidden bg-card shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elegant)] transition-all">
