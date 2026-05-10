@@ -47,6 +47,7 @@ export type HikeView = {
   priceCents: number | null;
   currency: string;
   organizer: { id: string; name: string; avatar: string; level: string };
+  distanceKm?: number;
 };
 
 const DIFF_MAP: Record<string, Difficulty> = {
@@ -66,7 +67,7 @@ const FALLBACK_AVATAR = "https://i.pravatar.cc/120?img=12";
 
 function fmtDate(iso: string) {
   try {
-    return new Date(iso).toLocaleString(undefined, {
+    return new Date(iso).toLocaleString("fr-FR", {
       weekday: "short",
       month: "short",
       day: "numeric",
@@ -78,7 +79,7 @@ function fmtDate(iso: string) {
   }
 }
 
-export function toView(h: DbHike): HikeView {
+export function toView(h: DbHike, distanceKm?: number): HikeView {
   const joined = h.participants_count ?? 0;
   return {
     id: h.id,
@@ -100,10 +101,11 @@ export function toView(h: DbHike): HikeView {
     currency: (h as any).currency ?? "EUR",
     organizer: {
       id: h.organizer?.id ?? h.organizer_id,
-      name: h.organizer?.full_name || "Anonymous hiker",
+      name: h.organizer?.full_name || "Randonneur anonyme",
       avatar: h.organizer?.avatar_url || FALLBACK_AVATAR,
-      level: h.organizer?.hiking_level || "Hiker",
+      level: h.organizer?.hiking_level || "Randonneur",
     },
+    distanceKm,
   };
 }
 
@@ -126,10 +128,49 @@ function normalize(rows: any[]): DbHike[] {
   }));
 }
 
+// Geocode une adresse via OpenStreetMap Nominatim (gratuit, sans clé API)
+export async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
+      { headers: { "Accept-Language": "fr" } }
+    );
+    const data = await res.json();
+    if (!data.length) return null;
+    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+  } catch {
+    return null;
+  }
+}
+
+// Calcule la distance en km entre deux points GPS (formule Haversine)
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+    Math.cos((lat2 * Math.PI) / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Geocode une liste de locations (avec cache simple)
+const geoCache: Record<string, { lat: number; lon: number } | null> = {};
+async function geocodeLocation(location: string) {
+  if (location in geoCache) return geoCache[location];
+  const result = await geocode(location);
+  geoCache[location] = result;
+  return result;
+}
+
 export async function fetchPublicHikes(opts?: {
   limit?: number;
   search?: string;
   difficulty?: Difficulty | "All";
+  nearLocation?: string;
+  radiusKm?: number;
 }): Promise<HikeView[]> {
   let q = supabase
     .from("hikes")
@@ -141,14 +182,36 @@ export async function fetchPublicHikes(opts?: {
   if (opts?.limit) q = q.limit(opts.limit);
   if (opts?.difficulty && opts.difficulty !== "All")
     q = q.eq("difficulty", opts.difficulty.toLowerCase());
-  if (opts?.search)
-    q = q.or(
-      `title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`,
-    );
+  if (opts?.search && !opts?.nearLocation)
+    q = q.or(`title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`);
 
   const { data, error } = await q;
   if (error) throw error;
-  return normalize(data as any[]).map(toView);
+
+  let hikes = normalize(data as any[]);
+
+  // Filtrage géographique par proximité
+  if (opts?.nearLocation) {
+    const origin = await geocode(opts.nearLocation);
+    if (origin) {
+      const radius = opts.radiusKm ?? 50;
+      const withDistance: { hike: DbHike; km: number }[] = [];
+
+      await Promise.all(
+        hikes.map(async (hike) => {
+          const coords = await geocodeLocation(hike.location);
+          if (!coords) return;
+          const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
+          if (km <= radius) withDistance.push({ hike, km });
+        })
+      );
+
+      withDistance.sort((a, b) => a.km - b.km);
+      return withDistance.map(({ hike, km }) => toView(hike, Math.round(km)));
+    }
+  }
+
+  return hikes.map((h) => toView(h));
 }
 
 export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
@@ -180,7 +243,7 @@ export async function fetchMyParticipation(
 
 export async function requestToJoinHike(hikeId: string) {
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("You must be signed in.");
+  if (!u.user) throw new Error("Vous devez être connecté.");
   const { data, error } = await supabase
     .from("hike_participants")
     .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
@@ -224,7 +287,7 @@ export async function createHike(input: {
   currency?: string;
 }) {
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("You must be signed in.");
+  if (!u.user) throw new Error("Vous devez être connecté.");
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
   const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
