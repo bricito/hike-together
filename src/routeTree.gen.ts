@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MyHikesRouteImport } from './routes/my-hikes'
 import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CreateRouteImport } from './routes/create'
@@ -36,6 +37,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyHikesRoute = MyHikesRouteImport.update({
+  id: '/my-hikes',
+  path: '/my-hikes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MeRoute = MeRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/my-hikes': typeof MyHikesRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/my-hikes': typeof MyHikesRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
   '/me': typeof MeRoute
+  '/my-hikes': typeof MyHikesRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/login'
     | '/me'
+    | '/my-hikes'
     | '/notifications'
     | '/reset-password'
     | '/signup'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/login'
     | '/me'
+    | '/my-hikes'
     | '/notifications'
     | '/reset-password'
     | '/signup'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/login'
     | '/me'
+    | '/my-hikes'
     | '/notifications'
     | '/reset-password'
     | '/signup'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   LoginRoute: typeof LoginRoute
   MeRoute: typeof MeRoute
+  MyHikesRoute: typeof MyHikesRoute
   NotificationsRoute: typeof NotificationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
@@ -220,6 +233,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-hikes': {
+      id: '/my-hikes'
+      path: '/my-hikes'
+      fullPath: '/my-hikes'
+      preLoaderRoute: typeof MyHikesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/me': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   LoginRoute: LoginRoute,
   MeRoute: MeRoute,
+  MyHikesRoute: MyHikesRoute,
   NotificationsRoute: NotificationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
@@ -313,3 +334,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
