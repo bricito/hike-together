@@ -34,7 +34,7 @@ export function SiteFooter() {
           </ul>
         </div>
       </div>
-      <p className="text-xs text-muted-foreground text-center mt-10">© 2026 BlablaHike · Conçu pour les randonneurs</p>
+      <p className="text-xs text-muted-foreground text-center mt-10">© 2026 BlablaHike · Conçu par les randonneurs pour les randonneurs</p>
     </footer>
   );
 }
