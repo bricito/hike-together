@@ -36,7 +36,7 @@ export async function fetchMessages(hikeId: string): Promise<MessageRow[]> {
 
 export async function sendMessage(hikeId: string, content: string) {
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Sign in required.");
+  if (!u.user) throw new Error("Connexion requise.");
   const { error } = await supabase.from("messages").insert({
     hike_id: hikeId,
     sender_id: u.user.id,
@@ -46,14 +46,12 @@ export async function sendMessage(hikeId: string, content: string) {
 }
 
 export async function fetchMyConversations(userId: string): Promise<Conversation[]> {
-  // Hikes the user organizes
   const { data: organized, error: e1 } = await supabase
     .from("hikes")
     .select("id, slug, title, cover_image_url")
     .eq("organizer_id", userId);
   if (e1) throw e1;
 
-  // Hikes the user is accepted in
   const { data: joined, error: e2 } = await supabase
     .from("hike_participants")
     .select("hike:hikes!hike_participants_hike_id_fkey ( id, slug, title, cover_image_url )")
@@ -100,7 +98,6 @@ export async function fetchMyConversations(userId: string): Promise<Conversation
     .sort((a, b) => (b.lastAt ?? "").localeCompare(a.lastAt ?? ""));
 }
 
-// ===== Pending join requests (organizer view) =====
 export type PendingRequest = {
   id: string;
   user_id: string;
@@ -133,7 +130,30 @@ export async function respondToRequest(participantId: string, status: "accepted"
   if (error) throw error;
 }
 
-// ===== Notifications =====
+// Décharge de responsabilité
+const LIABILITY_TEXT_VERSION = "v1.0-2026";
+const LIABILITY_TEXT = `Je reconnais que la participation à une randonnée comporte des risques inhérents, notamment mais sans s'y limiter : chutes, blessures, conditions météorologiques imprévisibles, terrain difficile ou accidenté. Je déclare être en condition physique suffisante pour participer à cette activité et disposer d'un équipement adapté.
+
+Je comprends que l'organisateur agit en tant que particulier ou facilitateur et non en tant que professionnel encadrant, sauf indication contraire explicite.
+
+En conséquence, j'accepte de participer sous ma propre responsabilité et renonce, dans les limites autorisées par la loi, à tout recours contre l'organisateur en cas d'accident, de blessure ou de dommage survenu lors de la randonnée, sauf en cas de faute lourde ou intentionnelle de sa part.
+
+Je m'engage à respecter les consignes de sécurité, à adopter un comportement prudent et à ne pas mettre en danger les autres participants.
+
+Je reconnais avoir pris connaissance des présentes conditions et les accepter sans réserve.`;
+
+export { LIABILITY_TEXT, LIABILITY_TEXT_VERSION };
+
+export async function saveLiabilityAcceptance(userId: string, hikeId: string) {
+  const { error } = await supabase.from("liability_acceptances").insert({
+    user_id: userId,
+    hike_id: hikeId,
+    accepted_at: new Date().toISOString(),
+    text_version: LIABILITY_TEXT_VERSION,
+  });
+  if (error) throw error;
+}
+
 export type Notification = {
   id: string;
   user_id: string;
