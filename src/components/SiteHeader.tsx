@@ -77,9 +77,37 @@ export function SiteHeader() {
                   )}
                 </Link>
               </Button>
-              <Button variant="ghost" size="icon" className="rounded-full hidden sm:inline-flex" onClick={() => signOut()} aria-label="Se déconnecter">
-                <LogOut className="h-5 w-5" />
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" className="rounded-full gap-1 px-2 sm:px-3">
+                    <span className="h-7 w-7 rounded-full bg-muted grid place-items-center">
+                      <UserIcon className="h-4 w-4" />
+                    </span>
+                    <span className="hidden sm:inline text-sm">Mon espace</span>
+                    <ChevronDown className="h-4 w-4 opacity-60" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuLabel className="truncate">{user.email}</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile/$id" params={{ id: user.id }}>Mon profil public</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/me">Modifier mon profil</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/messages">Messages</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/notifications">Notifications</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => signOut()}>
+                    <LogOut className="h-4 w-4 mr-2" /> Se déconnecter
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             <>
