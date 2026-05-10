@@ -18,6 +18,7 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MessagesIndexRouteImport } from './routes/messages.index'
 import { Route as HikesIndexRouteImport } from './routes/hikes.index'
+import { Route as ProfileIdRouteImport } from './routes/profile.$id'
 import { Route as MessagesHikeIdRouteImport } from './routes/messages.$hikeId'
 import { Route as HikesSlugRouteImport } from './routes/hikes.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -67,6 +68,11 @@ const HikesIndexRoute = HikesIndexRouteImport.update({
   path: '/hikes/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileIdRoute = ProfileIdRouteImport.update({
+  id: '/profile/$id',
+  path: '/profile/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesHikeIdRoute = MessagesHikeIdRouteImport.update({
   id: '/messages/$hikeId',
   path: '/messages/$hikeId',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes/': typeof HikesIndexRoute
   '/messages/': typeof MessagesIndexRoute
 }
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes': typeof HikesIndexRoute
   '/messages': typeof MessagesIndexRoute
 }
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes/': typeof HikesIndexRoute
   '/messages/': typeof MessagesIndexRoute
 }
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes/'
     | '/messages/'
   fileRoutesByTo: FileRoutesByTo
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes'
     | '/messages'
   id:
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes/'
     | '/messages/'
   fileRoutesById: FileRoutesById
@@ -182,6 +194,7 @@ export interface RootRouteChildren {
   AuthCallbackRoute: typeof AuthCallbackRoute
   HikesSlugRoute: typeof HikesSlugRoute
   MessagesHikeIdRoute: typeof MessagesHikeIdRoute
+  ProfileIdRoute: typeof ProfileIdRoute
   HikesIndexRoute: typeof HikesIndexRoute
   MessagesIndexRoute: typeof MessagesIndexRoute
 }
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HikesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/$id': {
+      id: '/profile/$id'
+      path: '/profile/$id'
+      fullPath: '/profile/$id'
+      preLoaderRoute: typeof ProfileIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages/$hikeId': {
       id: '/messages/$hikeId'
       path: '/messages/$hikeId'
@@ -286,6 +306,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthCallbackRoute: AuthCallbackRoute,
   HikesSlugRoute: HikesSlugRoute,
   MessagesHikeIdRoute: MessagesHikeIdRoute,
+  ProfileIdRoute: ProfileIdRoute,
   HikesIndexRoute: HikesIndexRoute,
   MessagesIndexRoute: MessagesIndexRoute,
 }
