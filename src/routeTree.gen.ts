@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as MeRouteImport } from './routes/me'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as MessagesIndexRouteImport } from './routes/messages.index'
 import { Route as HikesIndexRouteImport } from './routes/hikes.index'
+import { Route as ProfileIdRouteImport } from './routes/profile.$id'
 import { Route as MessagesHikeIdRouteImport } from './routes/messages.$hikeId'
 import { Route as HikesSlugRouteImport } from './routes/hikes.$slug'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
@@ -34,6 +36,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
 const NotificationsRoute = NotificationsRouteImport.update({
   id: '/notifications',
   path: '/notifications',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeRoute = MeRouteImport.update({
+  id: '/me',
+  path: '/me',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -61,6 +68,11 @@ const HikesIndexRoute = HikesIndexRouteImport.update({
   path: '/hikes/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileIdRoute = ProfileIdRouteImport.update({
+  id: '/profile/$id',
+  path: '/profile/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MessagesHikeIdRoute = MessagesHikeIdRouteImport.update({
   id: '/messages/$hikeId',
   path: '/messages/$hikeId',
@@ -81,12 +93,14 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes/': typeof HikesIndexRoute
   '/messages/': typeof MessagesIndexRoute
 }
@@ -94,12 +108,14 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes': typeof HikesIndexRoute
   '/messages': typeof MessagesIndexRoute
 }
@@ -108,12 +124,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/create': typeof CreateRoute
   '/login': typeof LoginRoute
+  '/me': typeof MeRoute
   '/notifications': typeof NotificationsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/signup': typeof SignupRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/hikes/$slug': typeof HikesSlugRoute
   '/messages/$hikeId': typeof MessagesHikeIdRoute
+  '/profile/$id': typeof ProfileIdRoute
   '/hikes/': typeof HikesIndexRoute
   '/messages/': typeof MessagesIndexRoute
 }
@@ -123,12 +141,14 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/login'
+    | '/me'
     | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes/'
     | '/messages/'
   fileRoutesByTo: FileRoutesByTo
@@ -136,12 +156,14 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/login'
+    | '/me'
     | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes'
     | '/messages'
   id:
@@ -149,12 +171,14 @@ export interface FileRouteTypes {
     | '/'
     | '/create'
     | '/login'
+    | '/me'
     | '/notifications'
     | '/reset-password'
     | '/signup'
     | '/auth/callback'
     | '/hikes/$slug'
     | '/messages/$hikeId'
+    | '/profile/$id'
     | '/hikes/'
     | '/messages/'
   fileRoutesById: FileRoutesById
@@ -163,12 +187,14 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CreateRoute: typeof CreateRoute
   LoginRoute: typeof LoginRoute
+  MeRoute: typeof MeRoute
   NotificationsRoute: typeof NotificationsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignupRoute: typeof SignupRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   HikesSlugRoute: typeof HikesSlugRoute
   MessagesHikeIdRoute: typeof MessagesHikeIdRoute
+  ProfileIdRoute: typeof ProfileIdRoute
   HikesIndexRoute: typeof HikesIndexRoute
   MessagesIndexRoute: typeof MessagesIndexRoute
 }
@@ -194,6 +220,13 @@ declare module '@tanstack/react-router' {
       path: '/notifications'
       fullPath: '/notifications'
       preLoaderRoute: typeof NotificationsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/me': {
+      id: '/me'
+      path: '/me'
+      fullPath: '/me'
+      preLoaderRoute: typeof MeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -231,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HikesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/$id': {
+      id: '/profile/$id'
+      path: '/profile/$id'
+      fullPath: '/profile/$id'
+      preLoaderRoute: typeof ProfileIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/messages/$hikeId': {
       id: '/messages/$hikeId'
       path: '/messages/$hikeId'
@@ -259,12 +299,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CreateRoute: CreateRoute,
   LoginRoute: LoginRoute,
+  MeRoute: MeRoute,
   NotificationsRoute: NotificationsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignupRoute: SignupRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   HikesSlugRoute: HikesSlugRoute,
   MessagesHikeIdRoute: MessagesHikeIdRoute,
+  ProfileIdRoute: ProfileIdRoute,
   HikesIndexRoute: HikesIndexRoute,
   MessagesIndexRoute: MessagesIndexRoute,
 }
