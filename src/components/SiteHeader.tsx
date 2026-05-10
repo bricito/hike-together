@@ -1,5 +1,13 @@
 import { Link } from "@tanstack/react-router";
-import { Bell, Mountain, MessageCircle, LogOut } from "lucide-react";
+import { Bell, Mountain, MessageCircle, LogOut, User as UserIcon, ChevronDown } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
