@@ -1,13 +1,14 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest } from "@/lib/hikes-api";
-import { fetchHikeRequests, respondToRequest } from "@/lib/messages-api";
+import { fetchHikeRequests, respondToRequest, saveLiabilityAcceptance, LIABILITY_TEXT } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
 
 export const Route = createFileRoute("/hikes/$slug")({
@@ -22,7 +23,7 @@ export const Route = createFileRoute("/hikes/$slug")({
     return {
       meta: [
         { title: `${h.title} — BlablaHike` },
-        { name: "description", content: `${h.title} à ${h.location}. Randonnée ${h.difficulty}, ${h.durationHours}h, ${h.elevationM}m de dénivelé. Rejoignez le groupe sur BlablaHike.` },
+        { name: "description", content: `${h.title} à ${h.location}. Randonnée ${h.difficulty}, ${h.durationHours}h, ${h.elevationM}m de dénivelé.` },
         { property: "og:title", content: h.title },
         { property: "og:description", content: `${h.location} · ${h.date}` },
         { property: "og:image", content: h.image },
@@ -47,11 +48,93 @@ export const Route = createFileRoute("/hikes/$slug")({
   component: HikeDetail,
 });
 
+// Modale de décharge de responsabilité
+function LiabilityModal({
+  onConfirm,
+  onCancel,
+  isPending,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+}) {
+  const [checked, setChecked] = useState(false);
+  const [showText, setShowText] = useState(false);
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-600 grid place-items-center">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
+          <h2 className="font-display text-xl">Décharge de responsabilité</h2>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-4">
+          Avant de rejoindre cette randonnée, vous devez lire et accepter les conditions ci-dessous.
+        </p>
+
+        {/* Bouton pour afficher/masquer le texte complet */}
+        <button
+          type="button"
+          onClick={() => setShowText((v) => !v)}
+          className="text-sm text-primary hover:underline mb-3 block"
+        >
+          {showText ? "Masquer les conditions ▲" : "Lire les conditions complètes ▼"}
+        </button>
+
+        {showText && (
+          <div className="rounded-2xl bg-secondary/50 border border-border p-4 text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-4 max-h-48 overflow-y-auto">
+            {LIABILITY_TEXT}
+          </div>
+        )}
+
+        {/* Case à cocher obligatoire */}
+        <label className="flex items-start gap-3 cursor-pointer p-3 rounded-2xl border border-border hover:bg-secondary/40 transition-colors">
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span className="text-sm font-medium">
+            Je reconnais les risques et accepte la décharge de responsabilité
+          </span>
+        </label>
+
+        <p className="text-[11px] text-muted-foreground mt-2 mb-6">
+          En cochant cette case, votre acceptation sera horodatée et conservée.
+        </p>
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 rounded-2xl"
+            onClick={onCancel}
+            disabled={isPending}
+          >
+            Annuler
+          </Button>
+          <Button
+            className="flex-1 rounded-2xl"
+            disabled={!checked || isPending}
+            onClick={onConfirm}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer ma demande"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HikeDetail() {
   const { hike } = Route.useLoaderData();
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [showLiability, setShowLiability] = useState(false);
 
   const participationKey = ["participation", hike.id, user?.id];
   const { data: participation } = useQuery({
@@ -61,12 +144,20 @@ function HikeDetail() {
   });
 
   const joinMut = useMutation({
-    mutationFn: () => requestToJoinHike(hike.id),
+    mutationFn: async () => {
+      const { data: u } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
+      if (u.user) await saveLiabilityAcceptance(u.user.id, hike.id);
+      return requestToJoinHike(hike.id);
+    },
     onSuccess: (data) => {
       qc.setQueryData(participationKey, data);
+      setShowLiability(false);
       toast.success("Demande envoyée ! L'organisateur va l'examiner.");
     },
-    onError: (e: any) => toast.error(e.message ?? "Impossible d'envoyer la demande."),
+    onError: (e: any) => {
+      setShowLiability(false);
+      toast.error(e.message ?? "Impossible d'envoyer la demande.");
+    },
   });
 
   const cancelMut = useMutation({
@@ -80,22 +171,24 @@ function HikeDetail() {
 
   const isOrganizer = user?.id === hike.organizer.id;
 
-  // Pending join requests (organizer only)
   const requestsKey = ["hike-requests", hike.id];
   const { data: requests = [] } = useQuery({
     queryKey: requestsKey,
     queryFn: () => fetchHikeRequests(hike.id),
     enabled: isOrganizer,
   });
+
   const respondMut = useMutation({
     mutationFn: ({ id, status }: { id: string; status: "accepted" | "declined" }) =>
       respondToRequest(id, status),
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: requestsKey });
+      qc.invalidateQueries({ queryKey: ["hikes"] });
       toast.success(vars.status === "accepted" ? "Demande acceptée." : "Demande refusée.");
     },
     onError: (e: any) => toast.error(e.message ?? "Impossible de mettre à jour la demande."),
   });
+
   const pendingRequests = requests.filter((r) => r.status === "pending");
 
   const { data: others = [] } = useQuery({
@@ -106,6 +199,15 @@ function HikeDetail() {
 
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Modale décharge */}
+      {showLiability && (
+        <LiabilityModal
+          onConfirm={() => joinMut.mutate()}
+          onCancel={() => setShowLiability(false)}
+          isPending={joinMut.isPending}
+        />
+      )}
+
       <SiteHeader />
 
       <div className="container mx-auto px-4 pt-6">
@@ -140,14 +242,8 @@ function HikeDetail() {
               <p className="font-medium">{hike.organizer.name}</p>
               <p className="text-xs text-muted-foreground">Randonneur {hike.organizer.level}</p>
             </div>
-            {/* Bouton contacter l'organisateur — visible pour tout utilisateur connecté sauf l'organisateur */}
             {user && !isOrganizer && (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="rounded-2xl gap-1.5"
-              >
+              <Button asChild variant="outline" size="sm" className="rounded-2xl gap-1.5">
                 <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
                   <MessageCircle className="h-4 w-4" /> Contacter
                 </Link>
@@ -254,10 +350,10 @@ function HikeDetail() {
               <Button
                 size="lg"
                 className="w-full rounded-2xl mt-5"
-                disabled={joinMut.isPending || hike.spotsLeft === 0}
-                onClick={() => joinMut.mutate()}
+                disabled={hike.spotsLeft === 0}
+                onClick={() => setShowLiability(true)}
               >
-                {joinMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : hike.spotsLeft === 0 ? "Randonnée complète" : "Demander à rejoindre"}
+                {hike.spotsLeft === 0 ? "Randonnée complète" : "Demander à rejoindre"}
               </Button>
             )}
           </div>
