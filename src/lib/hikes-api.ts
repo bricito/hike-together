@@ -130,7 +130,6 @@ function normalize(rows: any[]): DbHike[] {
   }));
 }
 
-// Geocode une adresse via OpenStreetMap Nominatim (gratuit, sans clé API)
 export async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
   try {
     const res = await fetch(
@@ -145,7 +144,6 @@ export async function geocode(address: string): Promise<{ lat: number; lon: numb
   }
 }
 
-// Calcule la distance en km entre deux points GPS (formule Haversine)
 function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -183,15 +181,12 @@ export async function fetchPublicHikes(opts?: {
 
   const hikes = normalize(data as any[]);
 
-  // Filtrage géographique par proximité en utilisant les coordonnées stockées
   if (opts?.nearLocation) {
     const origin = await geocode(opts.nearLocation);
     if (origin) {
       const radius = opts.radiusKm ?? 50;
       const withDistance: { hike: DbHike; km: number }[] = [];
-
       for (const hike of hikes) {
-        // Utilise les coordonnées stockées si disponibles, sinon géocode à la volée
         let coords: { lat: number; lon: number } | null = null;
         if (hike.lat && hike.lng) {
           coords = { lat: hike.lat, lon: hike.lng };
@@ -202,7 +197,6 @@ export async function fetchPublicHikes(opts?: {
         const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
         if (km <= radius) withDistance.push({ hike, km });
       }
-
       withDistance.sort((a, b) => a.km - b.km);
       return withDistance.map(({ hike, km }) => toView(hike, Math.round(km)));
     }
@@ -320,10 +314,7 @@ export async function createHike(input: {
 }) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Vous devez être connecté.");
-
-  // Géocode la location à la création
   const coords = await geocode(input.location);
-
   const baseSlug = slugify(input.title) || "hike";
   const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
   const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
@@ -346,4 +337,55 @@ export async function createHike(input: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function updateHike(
+  hikeId: string,
+  input: {
+    title: string;
+    location: string;
+    starts_at: string;
+    duration_hours: number;
+    elevation_m: number;
+    difficulty: Difficulty;
+    max_participants: number;
+    meeting_point: string;
+    description: string;
+    equipment: string[];
+    cover_image?: string | null;
+    price_cents?: number | null;
+    currency?: string;
+  }
+) {
+  const { data: u } = await supabase.auth.getUser();
+  if (!u.user) throw new Error("Vous devez être connecté.");
+
+  // Vérifie que l'utilisateur est bien l'organisateur
+  const { data: existing } = await supabase
+    .from("hikes")
+    .select("organizer_id, slug")
+    .eq("id", hikeId)
+    .single();
+  if (!existing || existing.organizer_id !== u.user.id)
+    throw new Error("Vous n'êtes pas autorisé à modifier cette randonnée.");
+
+  // Regéocode si la location a changé
+  const coords = await geocode(input.location);
+
+  const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
+  const { error } = await supabase
+    .from("hikes")
+    .update({
+      ...rest,
+      difficulty: difficulty.toLowerCase(),
+      elevation_gain_m: elevation_m,
+      cover_image_url: cover_image ?? null,
+      price_cents: price_cents ?? null,
+      currency: currency ?? "EUR",
+      lat: coords?.lat ?? null,
+      lng: coords?.lon ?? null,
+    })
+    .eq("id", hikeId);
+  if (error) throw error;
+  return existing.slug;
 }
