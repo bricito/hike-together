@@ -139,7 +139,7 @@ function Create() {
           <Field label="Équipement nécessaire (séparé par des virgules)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Chaussures de rando, eau, lampe frontale" className="h-12 rounded-2xl" /></Field>
           <div className="grid grid-cols-[2fr_1fr] gap-3">
             <Field label="Prix par personne (optionnel)">
-              <Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="ex. 12.50 pour le transport" className="h-12 rounded-2xl" />
+              <Input type="number" min={0} step="0.10" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="ex. 12.50 pour le transport" className="h-12 rounded-2xl" />
             </Field>
             <Field label="Devise">
               <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
