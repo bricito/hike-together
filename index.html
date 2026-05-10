@@ -1,22 +1,77 @@
 <!DOCTYPE html>
 <html lang="fr">
-  <head>
-    <meta charset="UTF-8" />
 
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="UTF-8" />
 
-    <link rel="manifest" href="/manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <meta name="theme-color" content="#2e7d32" />
+  <title>BlaBlaHike</title>
 
-    <link rel="apple-touch-icon" href="/icon-192.png" />
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json" />
 
-    <title>BlaBlaHike</title>
-  </head>
+  <meta name="theme-color" content="#2e7d32" />
 
-  <body>
-    <div id="root"></div>
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 
-    <script type="module" src="/src/index.tsx"></script>
-  </body>
+  <!-- iPhone PWA -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="BlaBlaHike" />
+
+  <!-- Android -->
+  <meta name="mobile-web-app-capable" content="yes" />
+
+</head>
+
+<body>
+
+  <!-- React app -->
+  <div id="root"></div>
+
+  <!-- Ton point d'entrée React -->
+  <script type="module" src="/src/index.tsx"></script>
+
+  <!-- Service Worker -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("/sw.js")
+          .then(() => {
+            console.log("PWA activée");
+          })
+          .catch((err) => {
+            console.error("Erreur SW:", err);
+          });
+      });
+    }
+  </script>
+
+  <!-- OneSignal Push Notifications -->
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js"></script>
+
+  <script>
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+    OneSignalDeferred.push(async function (OneSignal) {
+
+      await OneSignal.init({
+
+        appId: "TON_APP_ID",
+
+        notifyButton: {
+          enable: true,
+        },
+
+        allowLocalhostAsSecureOrigin: true
+
+      });
+
+    });
+  </script>
+
+</body>
+
 </html>
