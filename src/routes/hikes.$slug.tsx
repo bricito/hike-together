@@ -6,8 +6,11 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle } from "lucide-react";
-import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest } from "@/lib/hikes-api";
+import { Input } from "@/components/ui/input";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil } from "lucide-react";
+import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest, updateHike } from "@/lib/hikes-api";
+import type { HikeView } from "@/lib/hikes-api";
+import type { Difficulty } from "@/lib/hikes-data";
 import { fetchHikeRequests, respondToRequest, saveLiabilityAcceptance, LIABILITY_TEXT } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
 
@@ -48,84 +51,158 @@ export const Route = createFileRoute("/hikes/$slug")({
   component: HikeDetail,
 });
 
-// Modale de décharge de responsabilité
-function LiabilityModal({
-  onConfirm,
-  onCancel,
-  isPending,
-}: {
-  onConfirm: () => void;
-  onCancel: () => void;
-  isPending: boolean;
-}) {
+function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => void; onCancel: () => void; isPending: boolean }) {
   const [checked, setChecked] = useState(false);
   const [showText, setShowText] = useState(false);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-4">
-          <span className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-600 grid place-items-center">
-            <AlertTriangle className="h-5 w-5" />
-          </span>
+          <span className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-600 grid place-items-center"><AlertTriangle className="h-5 w-5" /></span>
           <h2 className="font-display text-xl">Décharge de responsabilité</h2>
         </div>
-
-        <p className="text-sm text-muted-foreground mb-4">
-          Avant de rejoindre cette randonnée, vous devez lire et accepter les conditions ci-dessous.
-        </p>
-
-        {/* Bouton pour afficher/masquer le texte complet */}
-        <button
-          type="button"
-          onClick={() => setShowText((v) => !v)}
-          className="text-sm text-primary hover:underline mb-3 block"
-        >
+        <p className="text-sm text-muted-foreground mb-4">Avant de rejoindre cette randonnée, vous devez lire et accepter les conditions ci-dessous.</p>
+        <button type="button" onClick={() => setShowText((v) => !v)} className="text-sm text-primary hover:underline mb-3 block">
           {showText ? "Masquer les conditions ▲" : "Lire les conditions complètes ▼"}
         </button>
-
         {showText && (
           <div className="rounded-2xl bg-secondary/50 border border-border p-4 text-xs text-muted-foreground leading-relaxed whitespace-pre-line mb-4 max-h-48 overflow-y-auto">
             {LIABILITY_TEXT}
           </div>
         )}
-
-        {/* Case à cocher obligatoire */}
         <label className="flex items-start gap-3 cursor-pointer p-3 rounded-2xl border border-border hover:bg-secondary/40 transition-colors">
-          <input
-            type="checkbox"
-            checked={checked}
-            onChange={(e) => setChecked(e.target.checked)}
-            className="mt-0.5 h-4 w-4 accent-primary"
-          />
-          <span className="text-sm font-medium">
-            Je reconnais les risques et accepte la décharge de responsabilité
-          </span>
+          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
+          <span className="text-sm font-medium">Je reconnais les risques et accepte la décharge de responsabilité</span>
         </label>
-
-        <p className="text-[11px] text-muted-foreground mt-2 mb-6">
-          En cochant cette case, votre acceptation sera horodatée et conservée.
-        </p>
-
+        <p className="text-[11px] text-muted-foreground mt-2 mb-6">En cochant cette case, votre acceptation sera horodatée et conservée.</p>
         <div className="flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 rounded-2xl"
-            onClick={onCancel}
-            disabled={isPending}
-          >
-            Annuler
-          </Button>
-          <Button
-            className="flex-1 rounded-2xl"
-            disabled={!checked || isPending}
-            onClick={onConfirm}
-          >
+          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onCancel} disabled={isPending}>Annuler</Button>
+          <Button className="flex-1 rounded-2xl" disabled={!checked || isPending} onClick={onConfirm}>
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer ma demande"}
           </Button>
         </div>
       </div>
     </div>
+  );
+}
+
+// Formulaire d'édition de la randonnée
+function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: () => void; onSaved: () => void }) {
+  const startsAt = new Date(hike.starts_at);
+  const dateStr = startsAt.toISOString().split("T")[0];
+  const timeStr = startsAt.toISOString().split("T")[1].slice(0, 5);
+
+  const [form, setForm] = useState({
+    title: hike.title,
+    location: hike.location,
+    date: dateStr,
+    time: timeStr,
+    duration_hours: hike.durationHours,
+    elevation_m: hike.elevationM,
+    difficulty: hike.difficulty as Difficulty,
+    max_participants: hike.maxParticipants,
+    meeting_point: hike.meetingPoint,
+    description: hike.description,
+    equipment: hike.equipment.join(", "),
+    cover_image: hike.image.includes("unsplash") ? "" : hike.image,
+    price: hike.priceCents ? (hike.priceCents / 100).toString() : "",
+    currency: hike.currency,
+  });
+
+  const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const qc = useQueryClient();
+  const saveMut = useMutation({
+    mutationFn: () => updateHike(hike.id, {
+      title: form.title,
+      location: form.location,
+      starts_at: new Date(`${form.date}T${form.time}`).toISOString(),
+      duration_hours: Number(form.duration_hours),
+      elevation_m: Number(form.elevation_m),
+      difficulty: form.difficulty,
+      max_participants: Number(form.max_participants),
+      meeting_point: form.meeting_point,
+      description: form.description,
+      equipment: form.equipment.split(",").map((s) => s.trim()).filter(Boolean),
+      cover_image: form.cover_image || null,
+      price_cents: form.price ? Math.round(Number(form.price) * 100) : null,
+      currency: form.currency,
+    }),
+    onSuccess: () => {
+      toast.success("Randonnée mise à jour !");
+      qc.invalidateQueries({ queryKey: ["hikes"] });
+      onSaved();
+      onClose();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Impossible de mettre à jour."),
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="font-display text-2xl">Modifier la randonnée</h2>
+          <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>
+        </div>
+
+        <div className="space-y-4">
+          <Field label="Titre"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} className="h-12 rounded-2xl" /></Field>
+          <Field label="Lieu"><Input required value={form.location} onChange={(e) => set("location", e.target.value)} className="h-12 rounded-2xl" /></Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Date"><Input required type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className="h-12 rounded-2xl" /></Field>
+            <Field label="Heure"><Input required type="time" value={form.time} onChange={(e) => set("time", e.target.value)} className="h-12 rounded-2xl" /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Durée (h)"><Input type="number" min={1} value={form.duration_hours} onChange={(e) => set("duration_hours", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+            <Field label="Dénivelé (m)"><Input type="number" min={0} value={form.elevation_m} onChange={(e) => set("elevation_m", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Difficulté">
+              <select value={form.difficulty} onChange={(e) => set("difficulty", e.target.value as Difficulty)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
+                <option value="Easy">Facile</option>
+                <option value="Moderate">Modéré</option>
+                <option value="Hard">Difficile</option>
+                <option value="Expert">Expert</option>
+              </select>
+            </Field>
+            <Field label="Participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
+          </div>
+          <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} className="h-12 rounded-2xl" /></Field>
+          <Field label="URL image de couverture (optionnel)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
+          <Field label="Description">
+            <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
+          </Field>
+          <Field label="Équipement (séparé par des virgules)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} className="h-12 rounded-2xl" /></Field>
+          <div className="grid grid-cols-[2fr_1fr] gap-3">
+            <Field label="Prix par personne (optionnel)">
+              <Input type="number" min={0} step="0.01" value={form.price} onChange={(e) => set("price", e.target.value)} placeholder="ex. 12.50" className="h-12 rounded-2xl" />
+            </Field>
+            <Field label="Devise">
+              <select value={form.currency} onChange={(e) => set("currency", e.target.value)} className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm">
+                <option>EUR</option><option>USD</option><option>GBP</option><option>CHF</option>
+              </select>
+            </Field>
+          </div>
+        </div>
+
+        <div className="flex gap-3 mt-6">
+          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>Annuler</Button>
+          <Button className="flex-1 rounded-2xl" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
+            {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer les modifications"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-sm font-medium block mb-1.5">{label}</span>
+      {children}
+    </label>
   );
 }
 
@@ -135,6 +212,7 @@ function HikeDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [showLiability, setShowLiability] = useState(false);
+  const [showEdit, setShowEdit] = useState(false);
 
   const participationKey = ["participation", hike.id, user?.id];
   const { data: participation } = useQuery({
@@ -199,7 +277,6 @@ function HikeDetail() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Modale décharge */}
       {showLiability && (
         <LiabilityModal
           onConfirm={() => joinMut.mutate()}
@@ -207,11 +284,23 @@ function HikeDetail() {
           isPending={joinMut.isPending}
         />
       )}
+      {showEdit && (
+        <EditHikeModal
+          hike={hike}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => window.location.reload()}
+        />
+      )}
 
       <SiteHeader />
 
-      <div className="container mx-auto px-4 pt-6">
+      <div className="container mx-auto px-4 pt-6 flex items-center justify-between">
         <Link to="/hikes" className="text-sm text-muted-foreground hover:text-foreground">← Retour aux randonnées</Link>
+        {isOrganizer && (
+          <Button variant="outline" size="sm" className="rounded-2xl gap-1.5" onClick={() => setShowEdit(true)}>
+            <Pencil className="h-4 w-4" /> Modifier la randonnée
+          </Button>
+        )}
       </div>
 
       <section className="container mx-auto px-4 pt-4">
@@ -250,12 +339,8 @@ function HikeDetail() {
               </Button>
             )}
             {!user && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-2xl gap-1.5"
-                onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
-              >
+              <Button variant="outline" size="sm" className="rounded-2xl gap-1.5"
+                onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}>
                 <MessageCircle className="h-4 w-4" /> Contacter
               </Button>
             )}
@@ -308,11 +393,8 @@ function HikeDetail() {
               </div>
             ) : !user ? (
               <>
-                <Button
-                  size="lg"
-                  className="w-full rounded-2xl mt-5"
-                  onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}
-                >
+                <Button size="lg" className="w-full rounded-2xl mt-5"
+                  onClick={() => navigate({ to: "/login", search: { redirect: `/hikes/${hike.slug}` } as any })}>
                   Connectez-vous pour rejoindre
                 </Button>
                 <p className="text-[11px] text-muted-foreground text-center mt-3">Un compte est nécessaire pour rejoindre</p>
@@ -322,12 +404,7 @@ function HikeDetail() {
                 <div className="mt-5 p-3 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm text-center font-medium flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" /> Demande en attente
                 </div>
-                <Button
-                  variant="outline"
-                  className="w-full rounded-2xl mt-2"
-                  disabled={cancelMut.isPending}
-                  onClick={() => cancelMut.mutate()}
-                >
+                <Button variant="outline" className="w-full rounded-2xl mt-2" disabled={cancelMut.isPending} onClick={() => cancelMut.mutate()}>
                   <X className="h-4 w-4" /> Annuler la demande
                 </Button>
               </>
@@ -347,12 +424,7 @@ function HikeDetail() {
                 Votre demande n'a pas été retenue cette fois.
               </div>
             ) : (
-              <Button
-                size="lg"
-                className="w-full rounded-2xl mt-5"
-                disabled={hike.spotsLeft === 0}
-                onClick={() => setShowLiability(true)}
-              >
+              <Button size="lg" className="w-full rounded-2xl mt-5" disabled={hike.spotsLeft === 0} onClick={() => setShowLiability(true)}>
                 {hike.spotsLeft === 0 ? "Randonnée complète" : "Demander à rejoindre"}
               </Button>
             )}
@@ -375,33 +447,17 @@ function HikeDetail() {
                 <ul className="space-y-3">
                   {pendingRequests.map((r) => (
                     <li key={r.id} className="flex items-center gap-3">
-                      <img
-                        src={r.user?.avatar_url || "https://i.pravatar.cc/40"}
-                        alt=""
-                        className="h-9 w-9 rounded-full object-cover"
-                      />
+                      <img src={r.user?.avatar_url || "https://i.pravatar.cc/40"} alt="" className="h-9 w-9 rounded-full object-cover" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{r.user?.full_name || "Randonneur"}</p>
                         <p className="text-[11px] text-muted-foreground truncate">{r.user?.hiking_level || "Randonneur"}</p>
                       </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full text-emerald-600 hover:bg-emerald-500/10"
-                        disabled={respondMut.isPending}
-                        onClick={() => respondMut.mutate({ id: r.id, status: "accepted" })}
-                        aria-label="Accepter"
-                      >
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-emerald-600 hover:bg-emerald-500/10"
+                        disabled={respondMut.isPending} onClick={() => respondMut.mutate({ id: r.id, status: "accepted" })} aria-label="Accepter">
                         <Check className="h-4 w-4" />
                       </Button>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full text-red-600 hover:bg-red-500/10"
-                        disabled={respondMut.isPending}
-                        onClick={() => respondMut.mutate({ id: r.id, status: "declined" })}
-                        aria-label="Refuser"
-                      >
+                      <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-red-600 hover:bg-red-500/10"
+                        disabled={respondMut.isPending} onClick={() => respondMut.mutate({ id: r.id, status: "declined" })} aria-label="Refuser">
                         <X className="h-4 w-4" />
                       </Button>
                     </li>
