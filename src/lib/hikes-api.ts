@@ -258,6 +258,41 @@ export async function cancelJoinRequest(participantId: string) {
   if (error) throw error;
 }
 
+export type MyHikesBuckets = {
+  organized: HikeView[];
+  accepted: HikeView[];
+  pending: HikeView[];
+};
+
+export async function fetchMyHikes(userId: string): Promise<MyHikesBuckets> {
+  const [orgRes, partRes] = await Promise.all([
+    supabase.from("hikes").select(SELECT).eq("organizer_id", userId).order("starts_at", { ascending: true }),
+    supabase
+      .from("hike_participants")
+      .select(`status, hike:hikes!hike_participants_hike_id_fkey ( ${SELECT} )`)
+      .eq("user_id", userId)
+      .in("status", ["pending", "accepted"]),
+  ]);
+  if (orgRes.error) throw orgRes.error;
+  if (partRes.error) throw partRes.error;
+
+  const organized = normalize(orgRes.data as any[]).map((h) => toView(h));
+
+  const accepted: HikeView[] = [];
+  const pending: HikeView[] = [];
+  for (const row of (partRes.data ?? []) as any[]) {
+    const raw = Array.isArray(row.hike) ? row.hike[0] : row.hike;
+    if (!raw) continue;
+    const view = toView(normalize([raw])[0]);
+    if (row.status === "accepted") accepted.push(view);
+    else if (row.status === "pending") pending.push(view);
+  }
+  const sortByDate = (a: HikeView, b: HikeView) => a.starts_at.localeCompare(b.starts_at);
+  accepted.sort(sortByDate);
+  pending.sort(sortByDate);
+  return { organized, accepted, pending };
+}
+
 export function slugify(s: string) {
   return s
     .toLowerCase()

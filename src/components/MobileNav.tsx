@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Map, PlusCircle, MessageCircle, User, type LucideIcon } from "lucide-react";
+import { Home, Map, PlusCircle, Backpack, Bell, type LucideIcon } from "lucide-react";
 
 type Item = { to: string; label: string; icon: LucideIcon; primary?: boolean };
 
@@ -7,8 +7,8 @@ const items: Item[] = [
   { to: "/", label: "Accueil", icon: Home },
   { to: "/hikes", label: "Carte", icon: Map },
   { to: "/create", label: "Créer", icon: PlusCircle, primary: true },
-  { to: "/messages", label: "Messages", icon: MessageCircle },
-  { to: "/notifications", label: "Alertes", icon: User },
+  { to: "/my-hikes", label: "Mes randos", icon: Backpack },
+  { to: "/notifications", label: "Alertes", icon: Bell },
 ];
 
 export function MobileNav() {

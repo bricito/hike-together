@@ -97,6 +97,9 @@ export function SiteHeader() {
                     <Link to="/me">Modifier mon profil</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
+                    <Link to="/my-hikes">Mes randos</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
                     <Link to="/messages">Messages</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
