@@ -17,6 +17,8 @@ export const Route = createFileRoute("/me")({
   component: MyProfilePage,
 });
 
+const HIKING_LEVELS = ["Débutant", "Intermédiaire", "Expert"];
+
 function MyProfilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
@@ -70,7 +72,7 @@ function MyProfilePage() {
           bio: bio.trim() || null,
           city: city.trim() || null,
           country: country.trim() || null,
-          hiking_level: hikingLevel.trim() || null,
+          hiking_level: hikingLevel || null,
         });
       if (error) throw error;
     },
@@ -124,7 +126,17 @@ function MyProfilePage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="level">Niveau de randonnée</Label>
-                  <Input id="level" value={hikingLevel} onChange={(e) => setHikingLevel(e.target.value)} maxLength={40} placeholder="Débutant, Intermédiaire, Avancé…" />
+                  <select
+                    id="level"
+                    value={hikingLevel}
+                    onChange={(e) => setHikingLevel(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">— Sélectionnez votre niveau —</option>
+                    {HIKING_LEVELS.map((level) => (
+                      <option key={level} value={level}>{level}</option>
+                    ))}
+                  </select>
                 </div>
                 <div className="pt-2">
                   <Button onClick={() => save.mutate()} disabled={save.isPending}>
