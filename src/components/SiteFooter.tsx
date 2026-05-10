@@ -35,7 +35,7 @@ export function SiteFooter() {
         <div className="text-sm">
           <h4 className="font-medium mb-3">Entreprise</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li><Link to="/legal" className="hover:text-foreground transition-colors">À propos</Link></li>
+            <li><Link to="/about" className="hover:text-foreground transition-colors">À propos</Link></li>
             <li><Link to="/legal" className="hover:text-foreground transition-colors">Mentions légales & CGU</Link></li>
             <li><Link to="/privacy" className="hover:text-foreground transition-colors">Politique de confidentialité</Link></li>
             <li><a href="mailto:admin@blablahike.eu" className="hover:text-foreground transition-colors">Contact</a></li>
