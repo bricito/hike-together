@@ -190,3 +190,44 @@ export async function markAllNotificationsRead(userId: string) {
     .is("read_at", null);
   if (error) throw error;
 }
+import { sendPushNotification } from "./onesignal";
+
+// Dans respondToRequest — notifie le participant quand accepté/refusé
+export async function respondToRequest(participantId: string, status: "accepted" | "declined") {
+  const { error } = await supabase
+    .from("hike_participants")
+    .update({ status })
+    .eq("id", participantId);
+  if (error) throw error;
+
+  // Récupère les infos pour la notification
+  const { data: participant } = await supabase
+    .from("hike_participants")
+    .select(`
+      user_id,
+      hike:hikes!hike_participants_hike_id_fkey ( title, slug )
+    `)
+    .eq("id", participantId)
+    .single();
+
+  if (participant) {
+    const hike = Array.isArray(participant.hike) ? participant.hike[0] : participant.hike;
+    const message = status === "accepted"
+      ? `✅ Votre demande pour "${hike?.title}" a été acceptée !`
+      : `❌ Votre demande pour "${hike?.title}" n'a pas été retenue.`;
+
+    await sendPushNotification({
+      userIds: [participant.user_id],
+      title: "BlablaHike",
+      message,
+      url: `https://www.blablahike.eu/hikes/${hike?.slug}`,
+    });
+
+    // Sauvegarde aussi en base
+    await supabase.from("notifications").insert({
+      user_id: participant.user_id,
+      type: status === "accepted" ? "request_accepted" : "request_declined",
+      payload: { hike_title: hike?.title, hike_slug: hike?.slug },
+    });
+  }
+}
