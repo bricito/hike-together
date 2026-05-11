@@ -122,13 +122,7 @@ export async function fetchHikeRequests(hikeId: string): Promise<PendingRequest[
   }));
 }
 
-export async function respondToRequest(participantId: string, status: "accepted" | "declined") {
-  const { error } = await supabase
-    .from("hike_participants")
-    .update({ status })
-    .eq("id", participantId);
-  if (error) throw error;
-}
+
 
 // Décharge de responsabilité
 const LIABILITY_TEXT_VERSION = "v1.0-2026";
