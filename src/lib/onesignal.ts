@@ -11,7 +11,7 @@ export async function initOneSignal() {
 
     notifyButton: {
       enable: false,
-    },
+    } as any,
   });
 }
 
