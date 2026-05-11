@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, MapPin, Calendar, Mountain, Compass, Users, Shield } from "lucide-react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { Search, MapPin, Calendar, Mountain, Compass, Users, Shield, Navigation } from "lucide-react";
 import heroImg from "@/assets/hero-mountains.jpg";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,10 +24,28 @@ export const Route = createFileRoute("/")({
 });
 
 function Index() {
+  const navigate = useNavigate();
+  const [destination, setDestination] = useState("");
+  const [origin, setOrigin] = useState("");
+  const [difficulty, setDifficulty] = useState("All");
+
   const { data: featured = [] } = useQuery({
     queryKey: ["hikes", "featured"],
     queryFn: () => fetchPublicHikes({ limit: 4 }),
   });
+
+  const onSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    navigate({
+      to: "/hikes",
+      search: {
+        q: destination.trim() || undefined,
+        near: origin.trim() || undefined,
+        difficulty: difficulty !== "All" ? difficulty : undefined,
+      },
+    });
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <SiteHeader />
@@ -49,34 +68,59 @@ function Index() {
           </p>
 
           {/* Search */}
-          <div className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.2fr_1fr_1fr_auto] gap-1">
+          <form onSubmit={onSearch} className="mt-10 mx-auto max-w-4xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-1">
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <MapPin className="h-4 w-4 text-primary" />
-              <div className="flex-1">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Où</div>
-                <Input placeholder="N'importe où" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Où je veux aller</div>
+                <Input
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  placeholder="Destination"
+                  className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm"
+                />
+              </div>
+            </label>
+            <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
+              <Navigation className="h-4 w-4 text-primary" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Au départ de</div>
+                <Input
+                  value={origin}
+                  onChange={(e) => setOrigin(e.target.value)}
+                  placeholder="Votre ville"
+                  className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm"
+                />
               </div>
             </label>
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <Calendar className="h-4 w-4 text-primary" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Quand</div>
                 <Input type="date" className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm" />
               </div>
             </label>
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <Mountain className="h-4 w-4 text-primary" />
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Difficulté</div>
-                <select className="w-full bg-transparent text-sm outline-none">
-                  <option>Tous les niveaux</option><option>Facile</option><option>Moyen</option><option>Difficile</option><option>Expert</option>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full bg-transparent text-sm outline-none"
+                >
+                  <option value="All">Tous les niveaux</option>
+                  <option value="Easy">Facile</option>
+                  <option value="Moderate">Moyen</option>
+                  <option value="Hard">Difficile</option>
+                  <option value="Expert">Expert</option>
                 </select>
               </div>
             </label>
-            <Button asChild size="lg" className="rounded-2xl h-auto md:px-6">
-              <Link to="/hikes"><Search className="h-4 w-4" /> Rechercher</Link>
+            <Button type="submit" size="lg" className="rounded-2xl h-auto md:px-6">
+              <Search className="h-4 w-4" /> Rechercher
             </Button>
-          </div>
+          </form>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 animate-fade-up" style={{ animationDelay: "240ms" }}>
             <Button asChild size="lg" className="rounded-full">
