@@ -6,6 +6,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { HikeCard } from "@/components/HikeCard";
+import { HikeParticipants } from "@/components/HikeParticipants";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
@@ -27,12 +28,15 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-function HikeGrid({ hikes, empty }: { hikes: HikeView[]; empty: string }) {
+function HikeGrid({ hikes, empty, showParticipants }: { hikes: HikeView[]; empty: string; showParticipants?: boolean }) {
   if (hikes.length === 0) return <EmptyState label={empty} />;
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
       {hikes.map((h) => (
-        <HikeCard key={h.id} hike={h} />
+        <div key={h.id} className="flex flex-col">
+          <HikeCard hike={h} />
+          {showParticipants && <HikeParticipants hikeId={h.id} />}
+        </div>
       ))}
     </div>
   );
@@ -89,12 +93,14 @@ function MyHikesPage() {
               <HikeGrid
                 hikes={data?.organized ?? []}
                 empty="Vous n'avez encore organisé aucune randonnée."
+                showParticipants
               />
             </TabsContent>
             <TabsContent value="accepted">
               <HikeGrid
                 hikes={data?.accepted ?? []}
                 empty="Aucune randonnée acceptée pour le moment."
+                showParticipants
               />
             </TabsContent>
             <TabsContent value="pending">
