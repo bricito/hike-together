@@ -11,12 +11,21 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Loader2 } from "lucide-react";
 
+type HikesSearch = { q?: string; near?: string; difficulty?: "All" | Difficulty };
+
 export const Route = createFileRoute("/hikes/")({
   head: () => ({
     meta: [
       { title: "Découvrir des randonnées — BlablaHike" },
       { name: "description", content: "Parcourez les randonnées communautaires. Filtrez par difficulté, durée et lieu." },
     ],
+  }),
+  validateSearch: (s: Record<string, unknown>): HikesSearch => ({
+    q: typeof s.q === "string" ? s.q : undefined,
+    near: typeof s.near === "string" ? s.near : undefined,
+    difficulty: (["All", "Easy", "Moderate", "Hard", "Expert"] as const).includes(s.difficulty as any)
+      ? (s.difficulty as HikesSearch["difficulty"])
+      : undefined,
   }),
   component: HikesPage,
 });
@@ -28,10 +37,11 @@ const diffLabels: Record<string, string> = {
 const radii = [10, 25, 50, 100];
 
 function HikesPage() {
-  const [diff, setDiff] = useState<"All" | Difficulty>("All");
-  const [q, setQ] = useState("");
-  const [nearInput, setNearInput] = useState("");
-  const [nearSearch, setNearSearch] = useState("");
+  const sp = Route.useSearch();
+  const [diff, setDiff] = useState<"All" | Difficulty>(sp.difficulty ?? "All");
+  const [q, setQ] = useState(sp.q ?? "");
+  const [nearInput, setNearInput] = useState(sp.near ?? "");
+  const [nearSearch, setNearSearch] = useState(sp.near ?? "");
   const [radius, setRadius] = useState(50);
 
   const { data: list = [], isLoading, isError } = useQuery({
