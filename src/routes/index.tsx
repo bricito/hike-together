@@ -25,7 +25,6 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
-  const [destination, setDestination] = useState("");
   const [origin, setOrigin] = useState("");
   const [difficulty, setDifficulty] = useState("All");
 
@@ -39,7 +38,6 @@ function Index() {
     navigate({
       to: "/hikes",
       search: {
-        q: destination.trim() || undefined,
         near: origin.trim() || undefined,
         difficulty: difficulty !== "All" ? difficulty : undefined,
       },
@@ -68,19 +66,7 @@ function Index() {
           </p>
 
           {/* Search */}
-          <form onSubmit={onSearch} className="mt-10 mx-auto max-w-4xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto] gap-1">
-            <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
-              <MapPin className="h-4 w-4 text-primary" />
-              <div className="flex-1 min-w-0">
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Où je veux aller</div>
-                <Input
-                  value={destination}
-                  onChange={(e) => setDestination(e.target.value)}
-                  placeholder="Destination"
-                  className="border-0 p-0 h-auto shadow-none focus-visible:ring-0 text-sm"
-                />
-              </div>
-            </label>
+          <form onSubmit={onSearch} className="mt-10 mx-auto max-w-3xl rounded-3xl bg-card/95 backdrop-blur-xl border border-border shadow-[var(--shadow-elegant)] p-3 md:p-2 grid grid-cols-1 md:grid-cols-[1.4fr_1fr_1fr_auto] gap-1">
             <label className="flex items-center gap-2 px-4 py-3 rounded-2xl hover:bg-secondary/60 transition-colors text-left">
               <Navigation className="h-4 w-4 text-primary" />
               <div className="flex-1 min-w-0">
