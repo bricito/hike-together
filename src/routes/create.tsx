@@ -125,7 +125,18 @@ function Create() {
             </Field>
             <Field label="Nombre de participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
-          <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} placeholder="Parking des Praz" className="h-12 rounded-2xl" /></Field>
+          <Field label="Point de rendez-vous *">
+  <Input
+    required
+    value={form.meeting_point}
+    onChange={(e) => set("meeting_point", e.target.value)}
+    placeholder="Ex : Devant la mairie, rue de la Paix, parking du col de Voza..."
+    className="h-12 rounded-2xl"
+  />
+  <p className="text-xs text-muted-foreground mt-1">
+    📍 Indiquez un lieu précis où les participants doivent se retrouver.
+  </p>
+</Field>
           <Field label="URL de l'image de couverture (optionnel)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
           <Field label="Lien de référence">
             <Input value={form.reference_link} onChange={(e) => set("reference_link", e.target.value)} placeholder="https://www.alltrails.com/trail/..." className="h-12 rounded-2xl" />
