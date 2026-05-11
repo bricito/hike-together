@@ -25,7 +25,6 @@ export const Route = createFileRoute("/")({
 
 function Index() {
   const navigate = useNavigate();
-  const [destination, setDestination] = useState("");
   const [origin, setOrigin] = useState("");
   const [difficulty, setDifficulty] = useState("All");
 
@@ -39,7 +38,6 @@ function Index() {
     navigate({
       to: "/hikes",
       search: {
-        q: destination.trim() || undefined,
         near: origin.trim() || undefined,
         difficulty: difficulty !== "All" ? difficulty : undefined,
       },
