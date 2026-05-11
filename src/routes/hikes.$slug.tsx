@@ -351,17 +351,20 @@ function HikeDetail() {
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{hike.description}</p>
           </div>
 
-          <div className="mt-10">
-            <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
-            <div className="rounded-3xl overflow-hidden border border-border bg-secondary/40 aspect-[16/9] grid place-items-center text-muted-foreground relative">
-              <div className="absolute inset-0 opacity-50" style={{ background: "radial-gradient(circle at 30% 40%, var(--primary-glow), transparent 60%), radial-gradient(circle at 70% 70%, var(--accent), transparent 50%)" }} />
-              <div className="relative text-center">
-                <Mountain className="h-10 w-10 mx-auto text-primary" />
-                <p className="mt-2 font-medium text-foreground">{hike.meetingPoint || "Partagé après votre inscription"}</p>
-                <p className="text-xs">Carte interactive à venir</p>
-              </div>
-            </div>
-          </div>
+         <div className="mt-10">
+  <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
+  <div className="flex items-start gap-3 p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
+    <span className="h-10 w-10 rounded-2xl bg-primary/10 text-primary grid place-items-center shrink-0">
+      <MapPin className="h-5 w-5" />
+    </span>
+    <div>
+      <p className="font-medium">{hike.meetingPoint || "Point de rendez-vous non renseigné"}</p>
+      <p className="text-xs text-muted-foreground mt-1">
+        Soyez à l'heure ! Contactez l'organisateur en cas de problème.
+      </p>
+    </div>
+  </div>
+</div>
 
           {hike.equipment.length > 0 && (
             <div className="mt-10">
