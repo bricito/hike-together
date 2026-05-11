@@ -11,9 +11,15 @@ function AuthCallback() {
   const navigate = useNavigate();
   useEffect(() => {
     // detectSessionInUrl handles OAuth + email confirmation hash automatically.
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) navigate({ to: "/hikes" });
-      else navigate({ to: "/login" });
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return navigate({ to: "/login" });
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, bio")
+        .eq("id", data.session.user.id)
+        .maybeSingle();
+      const incomplete = !profile || !profile.full_name?.trim() || !profile.bio?.trim();
+      navigate({ to: incomplete ? "/me" : "/hikes" });
     });
   }, [navigate]);
   return (

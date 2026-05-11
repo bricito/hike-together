@@ -32,8 +32,8 @@ function Signup() {
       navigate({ to: "/login" });
       return;
     }
-    toast.success("Welcome to BlablaHike!");
-    navigate({ to: "/hikes" });
+    toast.success("Bienvenue ! Complétez votre profil.");
+    navigate({ to: "/me" });
   };
 
   return (
