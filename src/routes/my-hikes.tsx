@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { fetchMyHikes, type HikeView } from "@/lib/hikes-api";
-import { fetchPendingReviews } from "@/lib/reviews-api";
+
 
 export const Route = createFileRoute("/my-hikes")({
   component: MyHikesPage,
