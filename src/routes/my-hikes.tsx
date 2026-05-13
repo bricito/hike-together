@@ -1,6 +1,3 @@
-import { ReviewSection } from "@/components/ReviewSection";
-import { fetchPendingReviews } from "@/lib/reviews-api";
-
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -14,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/lib/auth-context";
 import { fetchMyHikes, type HikeView } from "@/lib/hikes-api";
+import { ReviewSection } from "@/components/ReviewSection";
+import { fetchPendingReviews } from "@/lib/reviews-api";
 
 export const Route = createFileRoute("/my-hikes")({
   component: MyHikesPage,
@@ -31,7 +30,15 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-function HikeGrid({ hikes, empty, showParticipants }: { hikes: HikeView[]; empty: string; showParticipants?: boolean }) {
+function HikeGrid({
+  hikes,
+  empty,
+  showParticipants,
+}: {
+  hikes: HikeView[];
+  empty: string;
+  showParticipants?: boolean;
+}) {
   if (hikes.length === 0) return <EmptyState label={empty} />;
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -59,6 +66,12 @@ function MyHikesPage() {
     queryFn: () => fetchMyHikes(user!.id),
   });
 
+  const { data: pendingReviews = [] } = useQuery({
+    queryKey: ["pending-reviews", user?.id],
+    queryFn: () => fetchPendingReviews(user!.id),
+    enabled: !!user,
+  });
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <SiteHeader />
@@ -78,41 +91,47 @@ function MyHikesPage() {
         {isLoading || loading ? (
           <p className="text-sm text-muted-foreground">Chargement…</p>
         ) : error ? (
-          <p className="text-sm text-destructive">Impossible de charger vos randonnées.</p>
+          <p className="text-sm text-destructive">
+            Impossible de charger vos randonnées.
+          </p>
         ) : (
-          <Tabs defaultValue="organized" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="organized">
-                Organisées ({data?.organized.length ?? 0})
-              </TabsTrigger>
-              <TabsTrigger value="accepted">
-                Acceptées ({data?.accepted.length ?? 0})
-              </TabsTrigger>
-              <TabsTrigger value="pending">
-                En attente ({data?.pending.length ?? 0})
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="organized">
-              <HikeGrid
-                hikes={data?.organized ?? []}
-                empty="Vous n'avez encore organisé aucune randonnée."
-                showParticipants
-              />
-            </TabsContent>
-            <TabsContent value="accepted">
-              <HikeGrid
-                hikes={data?.accepted ?? []}
-                empty="Aucune randonnée acceptée pour le moment."
-                showParticipants
-              />
-            </TabsContent>
-            <TabsContent value="pending">
-              <HikeGrid
-                hikes={data?.pending ?? []}
-                empty="Aucune demande en attente."
-              />
-            </TabsContent>
-          </Tabs>
+          <>
+            <Tabs defaultValue="organized" className="w-full">
+              <TabsList className="mb-6">
+                <TabsTrigger value="organized">
+                  Organisées ({data?.organized.length ?? 0})
+                </TabsTrigger>
+                <TabsTrigger value="accepted">
+                  Acceptées ({data?.accepted.length ?? 0})
+                </TabsTrigger>
+                <TabsTrigger value="pending">
+                  En attente ({data?.pending.length ?? 0})
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="organized">
+                <HikeGrid
+                  hikes={data?.organized ?? []}
+                  empty="Vous n'avez encore organisé aucune randonnée."
+                  showParticipants
+                />
+              </TabsContent>
+              <TabsContent value="accepted">
+                <HikeGrid
+                  hikes={data?.accepted ?? []}
+                  empty="Aucune randonnée acceptée pour le moment."
+                  showParticipants
+                />
+              </TabsContent>
+              <TabsContent value="pending">
+                <HikeGrid
+                  hikes={data?.pending ?? []}
+                  empty="Aucune demande en attente."
+                />
+              </TabsContent>
+            </Tabs>
+
+            <ReviewSection targets={pendingReviews} />
+          </>
         )}
       </main>
       <SiteFooter />
