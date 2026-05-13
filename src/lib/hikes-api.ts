@@ -263,12 +263,13 @@ export async function requestToJoinHike(hikeId: string) {
       user_id: hike.organizer_id,
       type: "join_request",
       payload: {
-        hike_title: hike.title,
-        hike_slug: hike.slug,
-        hike_id: hikeId,
+        hike_title:     hike.title,
+        hike_slug:      hike.slug,
+        hike_id:        hikeId,
         participant_id: data.id,
-        user_name: profile?.full_name ?? "Quelqu'un",
-        user_avatar: profile?.avatar_url ?? null,
+        requester_id:   u.user.id,
+        user_name:      profile?.full_name ?? "Quelqu'un",
+        user_avatar:    profile?.avatar_url ?? null,
       },
     });
   }
