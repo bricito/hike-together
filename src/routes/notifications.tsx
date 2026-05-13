@@ -150,16 +150,30 @@ function NotificationsPage() {
                   </span>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm ${n.read_at ? "text-muted-foreground" : "font-medium"}`}>{text}</p>
+
                     {p.user_avatar && (
-                      <div className="flex items-center gap-2 mt-1">
-                        <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full" />
-                        <span className="text-xs text-muted-foreground">{p.user_name}</span>
-                      </div>
+                      p.requester_id ? (
+                        <Link
+                          to="/profile/$id"
+                          params={{ id: p.requester_id }}
+                          className="flex items-center gap-2 mt-1 w-fit hover:underline"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full" />
+                          <span className="text-xs text-muted-foreground">{p.user_name}</span>
+                        </Link>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full" />
+                          <span className="text-xs text-muted-foreground">{p.user_name}</span>
+                        </div>
+                      )
                     )}
+
                     <p className="text-[11px] text-muted-foreground mt-0.5">
                       {new Date(n.created_at).toLocaleString("fr-FR")}
                     </p>
-                    {/* Boutons accepter/refuser directement dans la notification */}
+
                     {isJoinRequest && (
                       <div className="flex gap-2 mt-3">
                         <Button
