@@ -27,7 +27,7 @@ function EmptyState({ label }: { label: string }) {
       </Button>
     </div>
   );
-}
+} 
 
 function HikeGrid({
   hikes,
