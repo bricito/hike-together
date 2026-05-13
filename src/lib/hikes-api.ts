@@ -235,12 +235,44 @@ export async function fetchMyParticipation(
 export async function requestToJoinHike(hikeId: string) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Vous devez être connecté.");
+
   const { data, error } = await supabase
     .from("hike_participants")
     .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
     .select("id, status")
     .single();
   if (error) throw error;
+
+  // ✅ CORRECTIF — récupère les infos de la randonnée et du demandeur
+  const [{ data: hike }, { data: profile }] = await Promise.all([
+    supabase
+      .from("hikes")
+      .select("organizer_id, title, slug")
+      .eq("id", hikeId)
+      .single(),
+    supabase
+      .from("profiles")
+      .select("full_name, avatar_url")
+      .eq("id", u.user.id)
+      .single(),
+  ]);
+
+  if (hike) {
+    // Notifie l'organisateur avec le titre de la randonnée dans le payload
+    await supabase.from("notifications").insert({
+      user_id: hike.organizer_id,
+      type: "join_request",
+      payload: {
+        hike_title: hike.title,
+        hike_slug: hike.slug,
+        hike_id: hikeId,
+        participant_id: data.id,
+        user_name: profile?.full_name ?? "Quelqu'un",
+        user_avatar: profile?.avatar_url ?? null,
+      },
+    });
+  }
+
   return data as { id: string; status: ParticipantStatus };
 }
 
@@ -360,7 +392,6 @@ export async function updateHike(
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Vous devez être connecté.");
 
-  // Vérifie que l'utilisateur est bien l'organisateur
   const { data: existing } = await supabase
     .from("hikes")
     .select("organizer_id, slug")
@@ -369,7 +400,6 @@ export async function updateHike(
   if (!existing || existing.organizer_id !== u.user.id)
     throw new Error("Vous n'êtes pas autorisé à modifier cette randonnée.");
 
-  // Regéocode si la location a changé
   const coords = await geocode(input.location);
 
   const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
