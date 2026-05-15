@@ -8,7 +8,6 @@ const diffStyles: Record<string, string> = {
   Hard: "bg-earth/15 text-earth",
   Expert: "bg-destructive/10 text-destructive",
 };
-
 const diffLabels: Record<string, string> = {
   Easy: "Facile",
   Moderate: "Modéré",
@@ -23,48 +22,55 @@ export function HikeCard({ hike }: { hike: HikeView }) {
       params={{ slug: hike.slug }}
       className="group block overflow-hidden rounded-3xl bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:shadow-[var(--shadow-elegant)] hover:-translate-y-1"
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
-        <img
-          src={hike.image}
-          alt={hike.title}
-          loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-        />
-        <div className="absolute top-3 left-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-medium backdrop-blur-md bg-background/70 ${diffStyles[hike.difficulty]}`}>
+      <div className="p-5">
+        {/* Badges */}
+        <div className="flex items-center justify-between mb-3">
+          <span className={`px-3 py-1 rounded-full text-xs font-medium ${diffStyles[hike.difficulty]}`}>
             {diffLabels[hike.difficulty] ?? hike.difficulty}
           </span>
-        </div>
-        <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
-          <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
-            {hike.spotsLeft} places restantes
-          </span>
-          {hike.priceCents != null && hike.priceCents > 0 ? (
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
-              {(hike.priceCents / 100).toFixed(2)} {hike.currency}
+          <div className="flex items-center gap-1.5">
+            {hike.priceCents != null && hike.priceCents > 0 ? (
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-primary text-primary-foreground">
+                {(hike.priceCents / 100).toFixed(2)} {hike.currency}
+              </span>
+            ) : (
+              <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+                Gratuit
+              </span>
+            )}
+            <span className="px-3 py-1 rounded-full text-xs font-medium bg-secondary text-muted-foreground">
+              {hike.spotsLeft} places
             </span>
-          ) : (
-            <span className="px-3 py-1 rounded-full text-xs font-medium bg-background/80 backdrop-blur-md text-foreground">
-              Gratuit
-            </span>
-          )}
+          </div>
         </div>
-      </div>
-      <div className="p-5">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
+
+        {/* Lieu */}
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1.5">
           <MapPin className="h-3.5 w-3.5" />
           {hike.location}
         </div>
+
+        {/* Titre + date */}
         <h3 className="font-display text-xl text-foreground leading-snug mb-1">{hike.title}</h3>
         <p className="text-sm text-muted-foreground mb-4">{hike.date}</p>
+
+        {/* Stats */}
         <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-border pt-3">
           <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{hike.durationHours}h</span>
           <span className="flex items-center gap-1"><TrendingUp className="h-3.5 w-3.5" />{hike.elevationM}m</span>
           <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" />{hike.maxParticipants}</span>
         </div>
+
+        {/* Organisateur */}
         <div className="flex items-center gap-2 mt-4">
-          <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-7 w-7 rounded-full object-cover" />
-          <span className="text-xs text-muted-foreground">Organisé par <span className="text-foreground font-medium">{hike.organizer.name}</span></span>
+          <img
+            src={hike.organizer.avatar}
+            alt={hike.organizer.name}
+            className="h-7 w-7 rounded-full object-cover"
+          />
+          <span className="text-xs text-muted-foreground">
+            Organisé par <span className="text-foreground font-medium">{hike.organizer.name}</span>
+          </span>
         </div>
       </div>
     </Link>
