@@ -24,7 +24,7 @@ function StarRating({ value, onChange }: { value: number; onChange: (v: number) 
       ))}
     </div>
   );
-}
+} 
 
 function BadgePill({ label, emoji, active, onToggle }: { label: string; emoji: string; active: boolean; onToggle: () => void }) {
   return (
