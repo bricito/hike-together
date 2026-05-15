@@ -28,7 +28,7 @@ export function SiteFooter() {
           <h4 className="font-medium mb-3">Communauté</h4>
           <ul className="space-y-2 text-muted-foreground">
             <li><Link to="/hikes" className="hover:text-foreground transition-colors">Comment ça marche</Link></li>
-            <li><Link to="/legal" className="hover:text-foreground transition-colors">Sécurité</Link></li>
+            <li><Link to="/safety" className="hover:text-foreground transition-colors">Sécurité</Link></li>
             <li><Link to="/create" className="hover:text-foreground transition-colors">Devenir animateur</Link></li>
           </ul>
         </div>
