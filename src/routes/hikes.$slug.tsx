@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
+import { HikeParticipants } from "@/components/HikeParticipants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil } from "lucide-react";
@@ -107,7 +108,7 @@ function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => v
           </span>
         </label>
         <p className="text-[11px] text-muted-foreground mt-2 mb-6">
-          En cochant cette case, votre acceptation sera horodatée et conservée. Vous pouvez également consulter notre{" "}
+          En cochant cette case, votre acceptation sera horodatée et conservée. Consultez notre{" "}
           <Link to="/safety" className="text-primary hover:underline">page Sécurité</Link>.
         </p>
         <div className="flex gap-3">
@@ -294,6 +295,7 @@ function HikeDetail() {
     onSuccess: (_d, vars) => {
       qc.invalidateQueries({ queryKey: requestsKey });
       qc.invalidateQueries({ queryKey: ["hikes"] });
+      qc.invalidateQueries({ queryKey: ["hike-participants", hike.id] });
       toast.success(vars.status === "accepted" ? "Demande acceptée." : "Demande refusée.");
     },
     onError: (e: any) => toast.error(e.message ?? "Impossible de mettre à jour la demande."),
@@ -354,10 +356,14 @@ function HikeDetail() {
 
           {/* Organisateur */}
           <div className="mt-10 flex items-center gap-4 p-5 rounded-3xl bg-card shadow-[var(--shadow-soft)]">
-            <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-14 w-14 rounded-full object-cover" />
+            <Link to="/profile/$id" params={{ id: hike.organizer.id }}>
+              <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-14 w-14 rounded-full object-cover hover:ring-2 hover:ring-primary transition-all" />
+            </Link>
             <div className="flex-1">
               <p className="text-xs text-muted-foreground">Organisé par</p>
-              <p className="font-medium">{hike.organizer.name}</p>
+              <Link to="/profile/$id" params={{ id: hike.organizer.id }} className="font-medium hover:text-primary transition-colors">
+                {hike.organizer.name}
+              </Link>
               <p className="text-xs text-muted-foreground">Randonneur {hike.organizer.level}</p>
             </div>
             {user && !isOrganizer && (
@@ -408,6 +414,14 @@ function HikeDetail() {
               </ul>
             </div>
           )}
+
+          {/* Participants */}
+          <div className="mt-10">
+            <h2 className="font-display text-2xl mb-3">Participants</h2>
+            <div className="p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
+              <HikeParticipants hikeId={hike.id} />
+            </div>
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -481,9 +495,13 @@ function HikeDetail() {
                 <ul className="space-y-3">
                   {pendingRequests.map((r) => (
                     <li key={r.id} className="flex items-center gap-3">
-                      <img src={r.user?.avatar_url || "https://i.pravatar.cc/40"} alt="" className="h-9 w-9 rounded-full object-cover" />
+                      <Link to="/profile/$id" params={{ id: r.user_id }}>
+                        <img src={r.user?.avatar_url || "https://i.pravatar.cc/40"} alt="" className="h-9 w-9 rounded-full object-cover hover:ring-2 hover:ring-primary transition-all" />
+                      </Link>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{r.user?.full_name || "Randonneur"}</p>
+                        <Link to="/profile/$id" params={{ id: r.user_id }} className="text-sm font-medium truncate hover:text-primary transition-colors block">
+                          {r.user?.full_name || "Randonneur"}
+                        </Link>
                         <p className="text-[11px] text-muted-foreground truncate">{r.user?.hiking_level || "Randonneur"}</p>
                       </div>
                       <Button size="icon" variant="ghost" className="h-8 w-8 rounded-full text-emerald-600 hover:bg-emerald-500/10"
@@ -503,7 +521,7 @@ function HikeDetail() {
         </aside>
       </section>
 
-      {/* Autres randonnées — sans image */}
+      {/* Autres randonnées */}
       {others.length > 0 && (
         <section className="container mx-auto px-4 mt-20">
           <h2 className="font-display text-2xl mb-6">D'autres randonnées qui pourraient vous plaire</h2>
