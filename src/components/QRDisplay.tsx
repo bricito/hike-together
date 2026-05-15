@@ -1,14 +1,12 @@
-type Props = {
-  token: string
-}
+import QRCode from "react-qr-code";
 
-export function QRDisplay({ token }: Props) {
-  const url = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${token}`
+export default function QRCodeDisplay({ hikeId, token }) {
+  const url = `${window.location.origin}/checkin?hike_id=${hikeId}&token=${token}`;
 
   return (
-    <div style={{ textAlign: "center" }}>
-      <img src={url} alt="QR Code check-in" />
-      <p style={{ marginTop: 10 }}>Token: {token}</p>
+    <div className="bg-white p-4">
+      <QRCode value={url} />
+      <p className="text-xs mt-2">{url}</p>
     </div>
-  )
+  );
 }
