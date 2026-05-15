@@ -7,12 +7,31 @@ import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Mountain, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest, updateHike } from "@/lib/hikes-api";
 import type { HikeView } from "@/lib/hikes-api";
 import type { Difficulty } from "@/lib/hikes-data";
-import { fetchHikeRequests, respondToRequest, saveLiabilityAcceptance, LIABILITY_TEXT } from "@/lib/messages-api";
+import { fetchHikeRequests, respondToRequest, saveLiabilityAcceptance } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
+
+const LIABILITY_TEXT = `En participant à une randonnée organisée via BlablaHike, vous reconnaissez et acceptez ce qui suit :
+
+1. Conscience des risques
+La randonnée est une activité de plein air exposant les participants à des risques naturels : conditions météorologiques changeantes, terrain irrégulier ou accidenté, fatigue physique, etc. Vous participez en pleine connaissance de ces risques.
+
+2. Aptitude personnelle
+Vous déclarez être en condition physique adaptée à la sortie choisie et disposer du matériel approprié (chaussures de randonnée, eau, vêtements adaptés à la saison, etc.).
+
+3. Rôle de l'organisateur
+L'organisateur agit en tant que particulier ou facilitateur bénévole. Il n'est ni un professionnel de l'encadrement sportif ni un guide breveté, sauf mention explicite dans la description de la sortie.
+
+4. Responsabilité personnelle
+Vous renoncez, dans les limites autorisées par la loi applicable, à tout recours contre l'organisateur en cas d'accident, de blessure ou de dommage survenu lors de la randonnée, sauf en cas de faute lourde ou intentionnelle de sa part.
+
+5. Comportement sécuritaire
+Vous vous engagez à adopter un comportement prudent, à respecter les consignes de l'organisateur et à ne pas mettre en danger les autres participants.
+
+En cochant la case ci-dessous, vous confirmez avoir lu, compris et accepté l'ensemble de ces conditions. Cette acceptation est horodatée et conservée.`;
 
 export const Route = createFileRoute("/hikes/$slug")({
   loader: async ({ params }) => {
@@ -29,8 +48,6 @@ export const Route = createFileRoute("/hikes/$slug")({
         { name: "description", content: `${h.title} à ${h.location}. Randonnée ${h.difficulty}, ${h.durationHours}h, ${h.elevationM}m de dénivelé.` },
         { property: "og:title", content: h.title },
         { property: "og:description", content: `${h.location} · ${h.date}` },
-        { property: "og:image", content: h.image },
-        { property: "twitter:image", content: h.image },
       ],
     };
   },
@@ -58,11 +75,19 @@ function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => v
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center gap-3 mb-4">
-          <span className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-600 grid place-items-center"><AlertTriangle className="h-5 w-5" /></span>
-          <h2 className="font-display text-xl">Décharge de responsabilité</h2>
+          <span className="h-10 w-10 rounded-2xl bg-amber-500/10 text-amber-600 grid place-items-center">
+            <AlertTriangle className="h-5 w-5" />
+          </span>
+          <h2 className="font-display text-xl">Conditions de participation</h2>
         </div>
-        <p className="text-sm text-muted-foreground mb-4">Avant de rejoindre cette randonnée, vous devez lire et accepter les conditions ci-dessous.</p>
-        <button type="button" onClick={() => setShowText((v) => !v)} className="text-sm text-primary hover:underline mb-3 block">
+        <p className="text-sm text-muted-foreground mb-4">
+          Avant de rejoindre cette randonnée, veuillez lire et accepter les conditions ci-dessous.
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowText((v) => !v)}
+          className="text-sm text-primary hover:underline mb-3 block"
+        >
           {showText ? "Masquer les conditions ▲" : "Lire les conditions complètes ▼"}
         </button>
         {showText && (
@@ -71,12 +96,24 @@ function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => v
           </div>
         )}
         <label className="flex items-start gap-3 cursor-pointer p-3 rounded-2xl border border-border hover:bg-secondary/40 transition-colors">
-          <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5 h-4 w-4 accent-primary" />
-          <span className="text-sm font-medium">Je reconnais les risques et accepte la décharge de responsabilité</span>
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={(e) => setChecked(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-primary"
+          />
+          <span className="text-sm font-medium">
+            Je reconnais les risques inhérents à la randonnée et accepte les conditions de participation
+          </span>
         </label>
-        <p className="text-[11px] text-muted-foreground mt-2 mb-6">En cochant cette case, votre acceptation sera horodatée et conservée.</p>
+        <p className="text-[11px] text-muted-foreground mt-2 mb-6">
+          En cochant cette case, votre acceptation sera horodatée et conservée. Vous pouvez également consulter notre{" "}
+          <Link to="/safety" className="text-primary hover:underline">page Sécurité</Link>.
+        </p>
         <div className="flex gap-3">
-          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onCancel} disabled={isPending}>Annuler</Button>
+          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onCancel} disabled={isPending}>
+            Annuler
+          </Button>
           <Button className="flex-1 rounded-2xl" disabled={!checked || isPending} onClick={onConfirm}>
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer ma demande"}
           </Button>
@@ -86,7 +123,6 @@ function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => v
   );
 }
 
-// Formulaire d'édition de la randonnée
 function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: () => void; onSaved: () => void }) {
   const startsAt = new Date(hike.starts_at);
   const dateStr = startsAt.toISOString().split("T")[0];
@@ -104,7 +140,6 @@ function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: ()
     meeting_point: hike.meetingPoint,
     description: hike.description,
     equipment: hike.equipment.join(", "),
-    cover_image: hike.image.includes("unsplash") ? "" : hike.image,
     price: hike.priceCents ? (hike.priceCents / 100).toString() : "",
     currency: hike.currency,
   });
@@ -125,7 +160,7 @@ function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: ()
       meeting_point: form.meeting_point,
       description: form.description,
       equipment: form.equipment.split(",").map((s) => s.trim()).filter(Boolean),
-      cover_image: form.cover_image || null,
+      cover_image: null,
       price_cents: form.price ? Math.round(Number(form.price) * 100) : null,
       currency: form.currency,
     }),
@@ -145,7 +180,6 @@ function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: ()
           <h2 className="font-display text-2xl">Modifier la randonnée</h2>
           <Button variant="ghost" size="icon" onClick={onClose}><X className="h-5 w-5" /></Button>
         </div>
-
         <div className="space-y-4">
           <Field label="Titre"><Input required value={form.title} onChange={(e) => set("title", e.target.value)} className="h-12 rounded-2xl" /></Field>
           <Field label="Lieu"><Input required value={form.location} onChange={(e) => set("location", e.target.value)} className="h-12 rounded-2xl" /></Field>
@@ -169,7 +203,6 @@ function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: ()
             <Field label="Participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
           <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} className="h-12 rounded-2xl" /></Field>
-          <Field label="URL image de couverture (optionnel)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
           <Field label="Description">
             <textarea value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
           </Field>
@@ -185,11 +218,10 @@ function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: ()
             </Field>
           </div>
         </div>
-
         <div className="flex gap-3 mt-6">
           <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose}>Annuler</Button>
           <Button className="flex-1 rounded-2xl" disabled={saveMut.isPending} onClick={() => saveMut.mutate()}>
-            {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer les modifications"}
+            {saveMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enregistrer"}
           </Button>
         </div>
       </div>
@@ -298,25 +330,21 @@ function HikeDetail() {
         <Link to="/hikes" className="text-sm text-muted-foreground hover:text-foreground">← Retour aux randonnées</Link>
         {isOrganizer && (
           <Button variant="outline" size="sm" className="rounded-2xl gap-1.5" onClick={() => setShowEdit(true)}>
-            <Pencil className="h-4 w-4" /> Modifier la randonnée
+            <Pencil className="h-4 w-4" /> Modifier
           </Button>
         )}
       </div>
 
-      <section className="container mx-auto px-4 pt-4">
-        <div className="rounded-4xl overflow-hidden relative aspect-[16/9] md:aspect-[21/9]">
-          <img src={hike.image} alt={hike.title} className="h-full w-full object-cover" />
-        </div>
-      </section>
-
-      <section className="container mx-auto px-4 mt-8 grid lg:grid-cols-[1fr_380px] gap-10">
+      <section className="container mx-auto px-4 mt-6 grid lg:grid-cols-[1fr_380px] gap-10">
         <div>
+          {/* Titre + badges */}
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
             <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">{hike.difficulty}</span>
             <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{hike.location}</span>
           </div>
           <h1 className="font-display text-4xl md:text-5xl leading-tight">{hike.title}</h1>
 
+          {/* Stats */}
           <div className="flex flex-wrap gap-6 mt-6 text-sm">
             <Stat icon={Calendar} label="Date" value={hike.date} />
             <Stat icon={Clock} label="Durée" value={`${hike.durationHours}h`} />
@@ -324,6 +352,7 @@ function HikeDetail() {
             <Stat icon={Users} label="Groupe" value={`${hike.maxParticipants - hike.spotsLeft}/${hike.maxParticipants}`} />
           </div>
 
+          {/* Organisateur */}
           <div className="mt-10 flex items-center gap-4 p-5 rounded-3xl bg-card shadow-[var(--shadow-soft)]">
             <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-14 w-14 rounded-full object-cover" />
             <div className="flex-1">
@@ -346,26 +375,27 @@ function HikeDetail() {
             )}
           </div>
 
+          {/* Description */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">À propos de cette randonnée</h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{hike.description}</p>
           </div>
 
-         <div className="mt-10">
-  <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
-  <div className="flex items-start gap-3 p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
-    <span className="h-10 w-10 rounded-2xl bg-primary/10 text-primary grid place-items-center shrink-0">
-      <MapPin className="h-5 w-5" />
-    </span>
-    <div>
-      <p className="font-medium">{hike.meetingPoint || "Point de rendez-vous non renseigné"}</p>
-      <p className="text-xs text-muted-foreground mt-1">
-        Soyez à l'heure ! Contactez l'organisateur en cas de problème.
-      </p>
-    </div>
-  </div>
-</div>
+          {/* Point de rendez-vous */}
+          <div className="mt-10">
+            <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
+            <div className="flex items-start gap-3 p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
+              <span className="h-10 w-10 rounded-2xl bg-primary/10 text-primary grid place-items-center shrink-0">
+                <MapPin className="h-5 w-5" />
+              </span>
+              <div>
+                <p className="font-medium">{hike.meetingPoint || "Non renseigné"}</p>
+                <p className="text-xs text-muted-foreground mt-1">Soyez à l'heure ! Contactez l'organisateur en cas de problème.</p>
+              </div>
+            </div>
+          </div>
 
+          {/* Équipement */}
           {hike.equipment.length > 0 && (
             <div className="mt-10">
               <h2 className="font-display text-2xl mb-3">Ce qu'il faut apporter</h2>
@@ -380,6 +410,7 @@ function HikeDetail() {
           )}
         </div>
 
+        {/* Sidebar */}
         <aside className="lg:sticky lg:top-24 h-fit">
           <div className="rounded-3xl bg-card p-6 shadow-[var(--shadow-elegant)] border border-border">
             <p className="text-sm text-muted-foreground">Rejoindre cette randonnée</p>
@@ -472,16 +503,27 @@ function HikeDetail() {
         </aside>
       </section>
 
+      {/* Autres randonnées — sans image */}
       {others.length > 0 && (
         <section className="container mx-auto px-4 mt-20">
           <h2 className="font-display text-2xl mb-6">D'autres randonnées qui pourraient vous plaire</h2>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {others.map((h) => (
-              <Link key={h.id} to="/hikes/$slug" params={{ slug: h.slug }} className="group rounded-3xl overflow-hidden bg-card shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elegant)] transition-all">
-                <div className="aspect-[4/3] overflow-hidden"><img src={h.image} alt={h.title} loading="lazy" className="h-full w-full object-cover group-hover:scale-105 transition-transform duration-700" /></div>
-                <div className="p-4">
-                  <p className="text-xs text-muted-foreground">{h.location}</p>
-                  <p className="font-medium mt-1">{h.title}</p>
+              <Link
+                key={h.id}
+                to="/hikes/$slug"
+                params={{ slug: h.slug }}
+                className="group rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elegant)] transition-all p-5"
+              >
+                <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                  <MapPin className="h-3 w-3" />{h.location}
+                </p>
+                <p className="font-medium group-hover:text-primary transition-colors">{h.title}</p>
+                <p className="text-xs text-muted-foreground mt-1">{h.date}</p>
+                <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
+                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{h.durationHours}h</span>
+                  <span className="flex items-center gap-1"><TrendingUp className="h-3 w-3" />{h.elevationM}m</span>
+                  <span className="flex items-center gap-1"><Users className="h-3 w-3" />{h.spotsLeft} places</span>
                 </div>
               </Link>
             ))}
