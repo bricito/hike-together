@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { Check } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/me")({
   component: MyProfilePage,
@@ -21,76 +21,17 @@ export const Route = createFileRoute("/me")({
 
 const HIKING_LEVELS = ["Débutant", "Intermédiaire", "Expert"];
 
-// 24 avatars prédéfinis via DiceBear (gratuit, pas de stockage)
-const AVATARS = [
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Felix&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Aneka&backgroundColor=ffd5dc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Milo&backgroundColor=c0aede",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Luna&backgroundColor=d1f4cc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Oscar&backgroundColor=ffdfbf",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Zoe&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Max&backgroundColor=ffd5dc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Lily&backgroundColor=c0aede",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Leo&backgroundColor=d1f4cc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Emma&backgroundColor=ffdfbf",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Noah&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Aria&backgroundColor=ffd5dc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Liam&backgroundColor=c0aede",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Chloe&backgroundColor=d1f4cc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Ethan&backgroundColor=ffdfbf",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Sophie&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Jack&backgroundColor=ffd5dc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Isla&backgroundColor=c0aede",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Oliver&backgroundColor=d1f4cc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Mia&backgroundColor=ffdfbf",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Hugo&backgroundColor=b6e3f4",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Jade&backgroundColor=ffd5dc",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Tom&backgroundColor=c0aede",
-  "https://api.dicebear.com/9.x/adventurer/svg?seed=Nina&backgroundColor=d1f4cc",
-];
-
 function initials(name?: string | null) {
   if (!name) return "?";
   return name.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
-}
-
-function AvatarPicker({
-  selected,
-  onSelect,
-}: {
-  selected: string;
-  onSelect: (url: string) => void;
-}) {
-  return (
-    <div className="grid grid-cols-6 gap-2 mt-3">
-      {AVATARS.map((url) => (
-        <button
-          key={url}
-          type="button"
-          onClick={() => onSelect(url)}
-          className={`relative rounded-2xl overflow-hidden border-2 transition-all ${
-            selected === url
-              ? "border-primary scale-105 shadow-md"
-              : "border-transparent hover:border-primary/40"
-          }`}
-        >
-          <img src={url} alt="avatar" className="w-full aspect-square" />
-          {selected === url && (
-            <span className="absolute inset-0 bg-primary/20 grid place-items-center">
-              <Check className="h-4 w-4 text-primary" />
-            </span>
-          )}
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function MyProfilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [showAvatarPicker, setShowAvatarPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) navigate({ to: "/login" });
@@ -128,6 +69,50 @@ function MyProfilePage() {
     }
   }, [profile]);
 
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("L'image ne doit pas dépasser 5 Mo.");
+      return;
+    }
+    if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+      toast.error("Format accepté : JPG, PNG ou WebP.");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${user.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(path);
+
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      setAvatarUrl(publicUrl);
+
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, avatar_url: publicUrl });
+      if (dbError) throw dbError;
+
+      qc.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Photo mise à jour !");
+    } catch (err: any) {
+      toast.error(err.message ?? "Erreur lors de l'upload.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const save = useMutation({
     mutationFn: async () => {
       const trimmed = fullName.trim();
@@ -149,7 +134,6 @@ function MyProfilePage() {
     },
     onSuccess: () => {
       toast.success("Profil mis à jour");
-      setShowAvatarPicker(false);
       qc.invalidateQueries({ queryKey: ["profile", user?.id] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -177,36 +161,48 @@ function MyProfilePage() {
               <p className="text-sm text-muted-foreground">Chargement…</p>
             ) : (
               <>
-                {/* Avatar */}
+                {/* Photo de profil */}
                 <div className="space-y-2">
                   <Label>Photo de profil</Label>
                   <div className="flex items-center gap-4">
-                    <Avatar className="h-16 w-16">
-                      <AvatarImage src={avatarUrl || undefined} alt={fullName} />
-                      <AvatarFallback>{initials(fullName)}</AvatarFallback>
-                    </Avatar>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="rounded-2xl"
-                      onClick={() => setShowAvatarPicker((v) => !v)}
-                    >
-                      {showAvatarPicker ? "Fermer ▲" : "Choisir un avatar ▼"}
-                    </Button>
-                  </div>
-                  {showAvatarPicker && (
-                    <div className="rounded-2xl border border-border p-4 bg-secondary/30">
-                      <p className="text-xs text-muted-foreground mb-2">Cliquez sur un avatar pour le sélectionner</p>
-                      <AvatarPicker
-                        selected={avatarUrl}
-                        onSelect={(url) => {
-                          setAvatarUrl(url);
-                          setShowAvatarPicker(false);
-                        }}
-                      />
+                    <div className="relative">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={avatarUrl || undefined} alt={fullName} />
+                        <AvatarFallback>{initials(fullName)}</AvatarFallback>
+                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity"
+                      >
+                        {uploading
+                          ? <Loader2 className="h-5 w-5 text-white animate-spin" />
+                          : <Camera className="h-5 w-5 text-white" />
+                        }
+                      </button>
                     </div>
-                  )}
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-2xl"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? "Upload en cours…" : "Changer la photo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">JPG, PNG ou WebP · max 5 Mo</p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
+                  </div>
                 </div>
 
                 {/* Pseudo */}
@@ -251,7 +247,7 @@ function MyProfilePage() {
                 </div>
 
                 <div className="pt-2">
-                  <Button onClick={() => save.mutate()} disabled={save.isPending}>
+                  <Button onClick={() => save.mutate()} disabled={save.isPending || uploading}>
                     {save.isPending ? "Enregistrement…" : "Enregistrer"}
                   </Button>
                 </div>
