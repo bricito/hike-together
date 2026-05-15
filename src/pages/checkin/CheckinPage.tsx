@@ -8,45 +8,67 @@ const supabase = createClient(
 );
 
 export default function CheckinPage() {
-  const { hikeId, token } = useSearch({
-    from: "/checkin",
-  });
+  const { hikeId, token } = useSearch({ from: "/checkin" });
 
   const [status, setStatus] = useState("loading");
 
   const checkIn = async () => {
-    const { data } = await supabase
+    if (!hikeId || !token) {
+      setStatus("invalid ❌");
+      return;
+    }
+
+    // 1. check token validity
+    const { data, error } = await supabase
       .from("hike_checkins")
       .select("*")
       .eq("hike_id", hikeId)
       .eq("token", token)
       .single();
 
-    if (!data) {
+    if (error || !data) {
       setStatus("invalid ❌");
       return;
     }
 
+    // 2. check expiration
     if (new Date(data.expires_at) < new Date()) {
       setStatus("expired ⏰");
       return;
     }
 
+    // 3. anti double scan
     if (data.used) {
       setStatus("already used ⚠️");
       return;
     }
 
-    await supabase
+    // 4. update check-in
+    const { error: updateError } = await supabase
       .from("hike_checkins")
-      .update({ used: true })
+      .update({
+        used: true,
+        used_at: new Date().toISOString(),
+      })
       .eq("id", data.id);
+
+    if (updateError) {
+      setStatus("error ❌");
+      return;
+    }
+
+    // 5. (IMPORTANT) insert participant log
+    await supabase.from("hike_participants").insert({
+      hike_id: hikeId,
+      checkin_id: data.id,
+      checked_in_at: new Date().toISOString(),
+    });
 
     setStatus("checked-in ✅");
   };
 
   useEffect(() => {
-    if (hikeId && token) checkIn();
+    checkIn();
   }, [hikeId, token]);
 
   return (
