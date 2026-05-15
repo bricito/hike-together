@@ -1,41 +1,58 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL!,
+  import.meta.env.VITE_SUPABASE_ANON_KEY!
+);
 
 export default function CheckinPage() {
-  const [status, setStatus] = useState("loading")
+  const { hikeId, token } = useSearch({
+    from: "/checkin",
+  });
 
-  const urlParams = new URLSearchParams(window.location.search)
-  const token = urlParams.get("token")
+  const [status, setStatus] = useState("loading");
 
-  // exemple user (remplace par Supabase auth)
-  const userId = "demo-user"
+  const checkIn = async () => {
+    const { data } = await supabase
+      .from("hike_checkins")
+      .select("*")
+      .eq("hike_id", hikeId)
+      .eq("token", token)
+      .single();
 
-  useEffect(() => {
-    async function checkin() {
-      if (!token) {
-        setStatus("missing token")
-        return
-      }
-
-      const res = await fetch(
-        `https://TON-WORKER.checkin?token=${token}&userId=${userId}`
-      )
-
-      const data = await res.json()
-
-      if (data.success) {
-        setStatus("✅ Check-in validé")
-      } else {
-        setStatus("❌ " + data.error)
-      }
+    if (!data) {
+      setStatus("invalid ❌");
+      return;
     }
 
-    checkin()
-  }, [])
+    if (new Date(data.expires_at) < new Date()) {
+      setStatus("expired ⏰");
+      return;
+    }
+
+    if (data.used) {
+      setStatus("already used ⚠️");
+      return;
+    }
+
+    await supabase
+      .from("hike_checkins")
+      .update({ used: true })
+      .eq("id", data.id);
+
+    setStatus("checked-in ✅");
+  };
+
+  useEffect(() => {
+    if (hikeId && token) checkIn();
+  }, [hikeId, token]);
 
   return (
-    <div style={{ padding: 20, textAlign: "center" }}>
-      <h1>Check-in randonnée</h1>
-      <p>{status}</p>
+    <div style={{ padding: 20 }}>
+      <h1>📱 Check-in randonnée</h1>
+      <p>Statut : {status}</p>
     </div>
-  )
+  );
 }
