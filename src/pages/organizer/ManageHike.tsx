@@ -12,30 +12,39 @@ export default function ManageHike() {
 
   const [qrUrl, setQrUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [token, setToken] = useState<string | null>(null);
 
   const generateQR = async () => {
     setLoading(true);
 
-    const token = crypto.randomUUID();
+    const newToken = crypto.randomUUID();
 
     const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 60);
+    expiresAt.setMinutes(expiresAt.getMinutes() + 60); // QR valable 1h
 
-    const checkinUrl = `${window.location.origin}/checkin?hikeId=${id}&token=${token}`;
+    const checkinUrl =
+      `${window.location.origin}/checkin?hikeId=${id}&token=${newToken}`;
 
-    // save in Supabase
-    await supabase.from("hike_checkins").insert({
+    // 💾 store token in Supabase
+    const { error } = await supabase.from("hike_checkins").insert({
       hike_id: id,
-      token,
+      token: newToken,
       expires_at: expiresAt.toISOString(),
     });
 
-    // QR via API Google Chart (zéro package requis)
-    const qr = `https://chart.googleapis.com/chart?cht=qr&chs=300x300&chl=${encodeURIComponent(
+    if (error) {
+      console.error(error);
+      setLoading(false);
+      return;
+    }
+
+    // 📱 QR code (simple, sans lib)
+    const qr = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(
       checkinUrl
     )}`;
 
     setQrUrl(qr);
+    setToken(newToken);
     setLoading(false);
   };
 
@@ -45,14 +54,20 @@ export default function ManageHike() {
       <p>Hike ID: {id}</p>
 
       <button onClick={generateQR} disabled={loading}>
-        {loading ? "Génération..." : "Afficher QR code"}
+        {loading ? "Génération..." : "Générer QR check-in"}
       </button>
 
       {qrUrl && (
         <div style={{ marginTop: 20 }}>
           <h3>📱 QR Code Check-in</h3>
+
           <img src={qrUrl} width={250} />
-          <p>Les participants doivent scanner ce code</p>
+
+          <p style={{ fontSize: 12, opacity: 0.7 }}>
+            Token: {token}
+          </p>
+
+          <p>Valable 60 minutes</p>
         </div>
       )}
     </div>
