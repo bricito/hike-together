@@ -37,12 +37,44 @@ export async function fetchMessages(hikeId: string): Promise<MessageRow[]> {
 export async function sendMessage(hikeId: string, content: string) {
   const { data: u } = await supabase.auth.getUser();
   if (!u.user) throw new Error("Connexion requise.");
+
   const { error } = await supabase.from("messages").insert({
     hike_id: hikeId,
     sender_id: u.user.id,
     content,
   });
   if (error) throw error;
+
+  // Récupère le titre de la rando + tous les membres du groupe
+  const [{ data: hike }, { data: participants }, { data: profile }] = await Promise.all([
+    supabase.from("hikes").select("title, slug, organizer_id").eq("id", hikeId).single(),
+    supabase.from("hike_participants").select("user_id").eq("hike_id", hikeId).eq("status", "accepted"),
+    supabase.from("profiles").select("full_name").eq("id", u.user.id).single(),
+  ]);
+
+  if (!hike) return;
+
+  // Tous les membres : organisateur + participants acceptés, sauf l'expéditeur
+  const memberIds = new Set<string>();
+  memberIds.add(hike.organizer_id);
+  (participants ?? []).forEach((p: any) => memberIds.add(p.user_id));
+  memberIds.delete(u.user.id);
+
+  if (memberIds.size === 0) return;
+
+  await supabase.from("notifications").insert(
+    Array.from(memberIds).map((uid) => ({
+      user_id: uid,
+      type: "new_message",
+      payload: {
+        hike_id:    hikeId,
+        hike_title: hike.title,
+        hike_slug:  hike.slug,
+        user_name:  profile?.full_name ?? "Quelqu'un",
+        sender_id:  u.user.id,
+      },
+    })),
+  );
 }
 
 export async function fetchMyConversations(userId: string): Promise<Conversation[]> {
@@ -122,9 +154,6 @@ export async function fetchHikeRequests(hikeId: string): Promise<PendingRequest[
   }));
 }
 
-
-
-// Décharge de responsabilité
 const LIABILITY_TEXT_VERSION = "v1.0-2026";
 const LIABILITY_TEXT = `Je reconnais que la participation à une randonnée comporte des risques inhérents, notamment mais sans s'y limiter : chutes, blessures, conditions météorologiques imprévisibles, terrain difficile ou accidenté. Je déclare être en condition physique suffisante pour participer à cette activité et disposer d'un équipement adapté.
 
@@ -184,9 +213,9 @@ export async function markAllNotificationsRead(userId: string) {
     .is("read_at", null);
   if (error) throw error;
 }
+
 import { sendPushNotification } from "./onesignal";
 
-// Dans respondToRequest — notifie le participant quand accepté/refusé
 export async function respondToRequest(participantId: string, status: "accepted" | "declined") {
   const { error } = await supabase
     .from("hike_participants")
@@ -194,7 +223,6 @@ export async function respondToRequest(participantId: string, status: "accepted"
     .eq("id", participantId);
   if (error) throw error;
 
-  // Récupère les infos pour la notification
   const { data: participant } = await supabase
     .from("hike_participants")
     .select(`
@@ -217,7 +245,6 @@ export async function respondToRequest(participantId: string, status: "accepted"
       url: `https://www.blablahike.eu/hikes/${hike?.slug}`,
     });
 
-    // Sauvegarde aussi en base
     await supabase.from("notifications").insert({
       user_id: participant.user_id,
       type: status === "accepted" ? "request_accepted" : "request_declined",
