@@ -1,79 +1,66 @@
-import { useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabase";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
+import { CheckCircle2, Loader2 } from "lucide-react";
 
-type Props = {
-  userId: string;
-};
+type Props = { hikeId: string };
 
-export function QRScanner({ userId }: Props) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+export function QRScanner({ hikeId }: Props) {
+  const [token, setToken] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    let stream: MediaStream;
+  const handleCheckin = async () => {
+    if (!token.trim()) return;
+    setLoading(true);
+    try {
+      const { data: checkin, error } = await supabase
+        .from("hike_checkins")
+        .select("*")
+        .eq("hike_id", hikeId)
+        .eq("token", token.trim())
+        .single();
 
-    const startCamera = async () => {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-      });
+      if (error || !checkin) { toast.error("QR invalide."); return; }
+      if (new Date(checkin.expires_at) < new Date()) { toast.error("QR expiré."); return; }
+      if (checkin.used_by) { toast.error("QR déjà utilisé."); return; }
 
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
-    };
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) { toast.error("Connexion requise."); return; }
 
-    startCamera();
+      await supabase.from("hike_checkins").update({
+        used_by: u.user.id,
+        used_at: new Date().toISOString(),
+      }).eq("id", checkin.id);
 
-    return () => {
-      stream?.getTracks().forEach((t) => t.stop());
-    };
-  }, []);
-
-  const fakeScan = async () => {
-    // 🔴 ici on simule lecture QR (version simple)
-    const input = prompt("Colle le QR JSON ici");
-
-    if (!input) return;
-
-    const { hikeId, token } = JSON.parse(input);
-
-    const { data: hike } = await supabase
-      .from("hikes")
-      .select("checkin_token")
-      .eq("id", hikeId)
-      .single();
-
-    if (hike?.checkin_token !== token) {
-      alert("QR invalide");
-      return;
-    }
-
-    await supabase
-      .from("hike_participants")
-      .update({
+      await supabase.from("hike_participants").update({
         checked_in: true,
-        checked_in_at: new Date(),
-      })
-      .eq("hike_id", hikeId)
-      .eq("user_id", userId);
+        checked_in_at: new Date().toISOString(),
+      }).eq("hike_id", hikeId).eq("user_id", u.user.id);
 
-    alert("Check-in OK !");
+      toast.success("Check-in effectué ✅");
+      setToken("");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur lors du check-in.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        className="w-72 h-72 bg-black rounded-lg"
+    <div className="flex flex-col gap-3">
+      <p className="text-sm text-muted-foreground">Entrez le token du QR code pour valider votre présence.</p>
+      <Input
+        value={token}
+        onChange={(e) => setToken(e.target.value)}
+        placeholder="Token du QR code"
+        className="rounded-2xl"
       />
-
-      <button
-        onClick={fakeScan}
-        className="px-4 py-2 bg-black text-white rounded"
-      >
-        Simuler scan QR
-      </button>
+      <Button onClick={handleCheckin} disabled={loading || !token.trim()} className="rounded-2xl gap-2">
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+        Valider le check-in
+      </Button>
     </div>
   );
 }
