@@ -17,7 +17,7 @@ function PrivacyPage() {
         <p className="text-muted-foreground mb-10">Conforme au RGPD — Dernière mise à jour : mai 2026</p>
 
         <Section title="1. Responsable du traitement">
-          <p><strong>Brice Jeanselme</strong><br />Email : <a href="mailto:admin@blablahike.eu" className="text-primary hover:underline">admin@blablahike.eu</a></p>
+          <p><strong>Administrateur </strong><br />Email : <a href="mailto:admin@blablahike.eu" className="text-primary hover:underline">admin@blablahike.eu</a></p>
         </Section>
 
         <Section title="2. Données collectées">
