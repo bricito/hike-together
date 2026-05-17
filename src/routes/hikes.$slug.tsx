@@ -339,14 +339,12 @@ function HikeDetail() {
 
       <section className="container mx-auto px-4 mt-6 grid lg:grid-cols-[1fr_380px] gap-10">
         <div>
-          {/* Titre + badges */}
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
             <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">{hike.difficulty}</span>
             <span className="flex items-center gap-1"><MapPin className="h-4 w-4" />{hike.location}</span>
           </div>
           <h1 className="font-display text-4xl md:text-5xl leading-tight">{hike.title}</h1>
 
-          {/* Stats */}
           <div className="flex flex-wrap gap-6 mt-6 text-sm">
             <Stat icon={Calendar} label="Date" value={hike.date} />
             <Stat icon={Clock} label="Durée" value={`${hike.durationHours}h`} />
@@ -354,7 +352,6 @@ function HikeDetail() {
             <Stat icon={Users} label="Groupe" value={`${hike.maxParticipants - hike.spotsLeft}/${hike.maxParticipants}`} />
           </div>
 
-          {/* Organisateur */}
           <div className="mt-10 flex items-center gap-4 p-5 rounded-3xl bg-card shadow-[var(--shadow-soft)]">
             <Link to="/profile/$id" params={{ id: hike.organizer.id }}>
               <img src={hike.organizer.avatar} alt={hike.organizer.name} className="h-14 w-14 rounded-full object-cover hover:ring-2 hover:ring-primary transition-all" />
@@ -381,13 +378,11 @@ function HikeDetail() {
             )}
           </div>
 
-          {/* Description */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">À propos de cette randonnée</h2>
             <p className="text-muted-foreground leading-relaxed whitespace-pre-line">{hike.description}</p>
           </div>
 
-          {/* Point de rendez-vous */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">Point de rendez-vous</h2>
             <div className="flex items-start gap-3 p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
@@ -401,7 +396,6 @@ function HikeDetail() {
             </div>
           </div>
 
-          {/* Équipement */}
           {hike.equipment.length > 0 && (
             <div className="mt-10">
               <h2 className="font-display text-2xl mb-3">Ce qu'il faut apporter</h2>
@@ -415,7 +409,6 @@ function HikeDetail() {
             </div>
           )}
 
-          {/* Participants */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">Participants</h2>
             <div className="p-5 rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)]">
@@ -425,7 +418,9 @@ function HikeDetail() {
         </div>
 
         {/* Sidebar */}
-        <aside className="lg:sticky lg:top-24 h-fit">
+        <aside className="lg:sticky lg:top-24 h-fit space-y-4">
+
+          {/* Carte principale */}
           <div className="rounded-3xl bg-card p-6 shadow-[var(--shadow-elegant)] border border-border">
             <p className="text-sm text-muted-foreground">Rejoindre cette randonnée</p>
             <p className="font-display text-2xl mt-1">{hike.spotsLeft} places restantes</p>
@@ -436,8 +431,20 @@ function HikeDetail() {
             </p>
 
             {isOrganizer ? (
-              <div className="mt-5 p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
-                Vous organisez cette randonnée
+              <div className="mt-5 space-y-2">
+                <div className="p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
+                  Vous organisez cette randonnée
+                </div>
+                <Button asChild variant="outline" className="w-full rounded-2xl">
+                  <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+                    <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" className="w-full rounded-2xl">
+                  <Link to="/hikes/$id/manage" params={{ id: hike.id }}>
+                    <QrCode className="h-4 w-4 mr-1" /> Gérer le check-in
+                  </Link>
+                </Button>
               </div>
             ) : !user ? (
               <>
@@ -456,17 +463,17 @@ function HikeDetail() {
                   <X className="h-4 w-4" /> Annuler la demande
                 </Button>
               </>
-           ) : participation?.status === "accepted" ? (
-  <>
-    <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
-      <Check className="h-4 w-4" /> Vous participez !
-    </div>
-    <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
-      <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
-        <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
-      </Link>
-    </Button>
-  </>
+            ) : participation?.status === "accepted" ? (
+              <>
+                <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+                  <Check className="h-4 w-4" /> Vous participez !
+                </div>
+                <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
+                  <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+                    <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
+                  </Link>
+                </Button>
+              </>
             ) : participation?.status === "declined" ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
                 Votre demande n'a pas été retenue cette fois.
@@ -478,23 +485,17 @@ function HikeDetail() {
             )}
           </div>
 
-          {isOrganizer ? (
-  <div className="mt-5 space-y-2">
-    <div className="p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
-      Vous organisez cette randonnée
-    </div>
-    <Button asChild variant="outline" className="w-full rounded-2xl">
-      <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
-        <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
-      </Link>
-    </Button>
-    <Button asChild variant="outline" className="w-full rounded-2xl">
-      <Link to="/hikes/$id/manage" params={{ id: hike.id }}>
-        <QrCode className="h-4 w-4 mr-1" /> Gérer le check-in
-      </Link>
-    </Button>
-  </div>
-) : ...}
+          {/* Demandes en attente — organisateur seulement */}
+          {isOrganizer && (
+            <div className="rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] border border-border">
+              <div className="flex items-center gap-2 mb-3">
+                <UserPlus className="h-4 w-4 text-primary" />
+                <p className="font-medium text-sm">Demandes de participation</p>
+                {pendingRequests.length > 0 && (
+                  <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
+                    {pendingRequests.length} en attente
+                  </span>
+                )}
               </div>
               {pendingRequests.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Aucune demande en attente.</p>
@@ -528,7 +529,6 @@ function HikeDetail() {
         </aside>
       </section>
 
-      {/* Autres randonnées */}
       {others.length > 0 && (
         <section className="container mx-auto px-4 mt-20">
           <h2 className="font-display text-2xl mb-6">D'autres randonnées qui pourraient vous plaire</h2>
