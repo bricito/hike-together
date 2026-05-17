@@ -20,14 +20,16 @@ export function SiteFooter() {
           <h4 className="font-medium mb-3">Découvrir</h4>
           <ul className="space-y-2 text-muted-foreground">
             <li><Link to="/hikes" className="hover:text-foreground transition-colors">Randonnées près de moi</Link></li>
-            <li><Link to="/hikes" className="hover:text-foreground transition-colors">Sentiers populaires</Link></li>
+     <li>  <Link to="/popular-trails" className="hover:text-foreground transition-colors">     Sentiers populaires
+  </Link>
+</li>
             <li><Link to="/hikes" className="hover:text-foreground transition-colors">Randonnées faciles</Link></li>
           </ul>
         </div>
         <div className="text-sm">
           <h4 className="font-medium mb-3">Communauté</h4>
           <ul className="space-y-2 text-muted-foreground">
-            <li><Link to="/hikes" className="hover:text-foreground transition-colors">Comment ça marche</Link></li>
+            <li><Link to="/how-it-works" className="hover:text-foreground transition-colors">Comment ça marche</Link></li>
             <li><Link to="/safety" className="hover:text-foreground transition-colors">Sécurité</Link></li>
             <li><Link to="/create" className="hover:text-foreground transition-colors">Devenir animateur</Link></li>
           </ul>
