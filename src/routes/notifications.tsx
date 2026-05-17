@@ -61,6 +61,12 @@ function labelFor(n: Notification): { text: string; href?: string; params?: any 
         href: p.hike_slug ? "/hikes/$slug" : undefined,
         params: p.hike_slug ? { slug: p.hike_slug } : undefined,
       };
+      case "checkin":
+  return {
+    text: `✅ ${p.user_name ?? "Un participant"} a confirmé sa présence à "${p.hike_title ?? "une randonnée"}"`,
+    href: p.hike_slug ? "/hikes/$slug" : undefined,
+    params: p.hike_slug ? { slug: p.hike_slug } : undefined,
+  };
     default:
       return { text: n.type };
   }
