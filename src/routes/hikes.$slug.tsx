@@ -8,7 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { HikeParticipants } from "@/components/HikeParticipants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil, QrCode } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest, updateHike } from "@/lib/hikes-api";
 import type { HikeView } from "@/lib/hikes-api";
 import type { Difficulty } from "@/lib/hikes-data";
@@ -456,17 +456,17 @@ function HikeDetail() {
                   <X className="h-4 w-4" /> Annuler la demande
                 </Button>
               </>
-            ) : participation?.status === "accepted" ? (
-              <>
-                <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
-                  <Check className="h-4 w-4" /> Vous participez !
-                </div>
-                <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
-                  <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
-                    <MessageCircle className="h-4 w-4 mr-1" /> Chat du groupe
-                  </Link>
-                </Button>
-              </>
+           ) : participation?.status === "accepted" ? (
+  <>
+    <div className="mt-5 p-3 rounded-2xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 text-sm text-center font-medium flex items-center justify-center gap-2">
+      <Check className="h-4 w-4" /> Vous participez !
+    </div>
+    <Button asChild variant="outline" className="w-full rounded-2xl mt-2">
+      <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+        <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
+      </Link>
+    </Button>
+  </>
             ) : participation?.status === "declined" ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
                 Votre demande n'a pas été retenue cette fois.
@@ -478,16 +478,23 @@ function HikeDetail() {
             )}
           </div>
 
-          {isOrganizer && (
-            <div className="mt-4 rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] border border-border">
-              <div className="flex items-center gap-2 mb-3">
-                <UserPlus className="h-4 w-4 text-primary" />
-                <p className="font-medium text-sm">Demandes de participation</p>
-                {pendingRequests.length > 0 && (
-                  <span className="ml-auto text-[11px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-                    {pendingRequests.length} en attente
-                  </span>
-                )}
+          {isOrganizer ? (
+  <div className="mt-5 space-y-2">
+    <div className="p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
+      Vous organisez cette randonnée
+    </div>
+    <Button asChild variant="outline" className="w-full rounded-2xl">
+      <Link to="/messages/$hikeId" params={{ hikeId: hike.id }}>
+        <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
+      </Link>
+    </Button>
+    <Button asChild variant="outline" className="w-full rounded-2xl">
+      <Link to="/hikes/$id/manage" params={{ id: hike.id }}>
+        <QrCode className="h-4 w-4 mr-1" /> Gérer le check-in
+      </Link>
+    </Button>
+  </div>
+) : ...}
               </div>
               {pendingRequests.length === 0 ? (
                 <p className="text-xs text-muted-foreground">Aucune demande en attente.</p>
