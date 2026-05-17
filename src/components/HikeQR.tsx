@@ -1,47 +1,58 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { QRDisplay } from "@/components/QRDisplay";
+import { Button } from "@/components/ui/button";
+import { Loader2, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
-type Props = {
-  hikeId: string;
-};
+type Props = { hikeId: string };
 
 export function HikeQR({ hikeId }: Props) {
-  const [qrValue, setQrValue] = useState<string>("");
+  const [token, setToken] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(null);
 
-  useEffect(() => {
-    const generate = async () => {
-      const res = await fetch(
-        `https://YOUR-WORKER.workers.dev/generate?hikeId=${hikeId}`
-      );
+  const generate = async () => {
+    setLoading(true);
+    try {
+      const newToken = crypto.randomUUID();
+      const expires = new Date();
+      expires.setMinutes(expires.getMinutes() + 60);
 
-      const data = await res.json();
+      const { error } = await supabase.from("hike_checkins").insert({
+        hike_id: hikeId,
+        token: newToken,
+        expires_at: expires.toISOString(),
+      });
 
-      setQrValue(
-        JSON.stringify({
-          hikeId: data.hikeId,
-          token: data.token,
-        })
-      );
-    };
-
-    generate();
-
-    const interval = setInterval(generate, 30000); // QR dynamique
-    return () => clearInterval(interval);
-  }, [hikeId]);
-
-  if (!qrValue) return <p>Chargement QR...</p>;
-
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(
-    qrValue
-  )}`;
+      if (error) throw error;
+      setToken(newToken);
+      setExpiresAt(expires);
+      toast.success("QR généré — valable 60 minutes.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erreur lors de la génération.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <img src={qrUrl} alt="QR Check-in" className="rounded-lg shadow" />
+    <div className="space-y-4">
+      <Button onClick={generate} disabled={loading} className="rounded-2xl gap-2 w-full">
+        {loading
+          ? <Loader2 className="h-4 w-4 animate-spin" />
+          : <RefreshCw className="h-4 w-4" />}
+        {token ? "Regénérer le QR" : "Générer le QR de check-in"}
+      </Button>
 
-      <p className="text-sm opacity-70">
-        QR valable 30 secondes
-      </p>
+      {token && expiresAt && (
+        <div className="rounded-3xl border border-border bg-card p-6 flex flex-col items-center gap-3">
+          <QRDisplay hikeId={hikeId} token={token} />
+          <p className="text-xs text-muted-foreground">
+            Valable jusqu'à {expiresAt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
