@@ -23,6 +23,7 @@ export const Route = createFileRoute("/notifications")({
 function iconFor(type: string) {
   if (type === "join_request") return UserPlus;
   if (type === "new_message") return MessageCircle;
+  if (type === "checkin") return CheckCircle2;
   return Bell;
 }
 
