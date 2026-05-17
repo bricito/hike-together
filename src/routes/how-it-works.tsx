@@ -1,4 +1,8 @@
+
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { SiteHeader } from "@/components/site-header";
+import { SiteFooter } from "@/components/site-footer";
+
 import {
   Mountain,
   Users,
