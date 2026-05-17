@@ -89,9 +89,6 @@ function Login() {
                 <div className="h-px flex-1 bg-border" />OU<div className="h-px flex-1 bg-border" />
               </div>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("google")}>Continuer avec Google</Button>
-                <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("apple")}>Continuer avec Apple</Button>
-              </div>
               <p className="text-sm text-center text-muted-foreground mt-4">
                 Nouveau ? <Link to="/signup" className="text-primary hover:underline">Créer un compte</Link>
               </p>
