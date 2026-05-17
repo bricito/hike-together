@@ -54,9 +54,7 @@ function Signup() {
           </form>
           <div className="my-4 flex items-center gap-3 text-xs text-muted-foreground"><div className="h-px flex-1 bg-border" />OR<div className="h-px flex-1 bg-border" /></div>
           <div className="space-y-2">
-            <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("google")}>Continue with Google</Button>
-            <Button variant="outline" className="w-full h-12 rounded-2xl" onClick={() => signInWithOAuth("apple")}>Continue with Apple</Button>
-          </div>
+            
           <p className="text-sm text-center text-muted-foreground mt-4">
             Already have an account? <Link to="/login" className="text-primary hover:underline">Log in</Link>
           </p>
