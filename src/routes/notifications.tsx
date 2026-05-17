@@ -28,32 +28,38 @@ function iconFor(type: string) {
 
 function labelFor(n: Notification): { text: string; href?: string; params?: any } {
   const p = n.payload || {};
+  const title = p.hike_title ?? "une randonnée";
+
   switch (n.type) {
     case "join_request":
       return {
-        text: `${p.user_name || "Quelqu'un"} souhaite rejoindre "${p.hike_title}"`,
-        href: "/hikes/$slug",
-        params: { slug: p.hike_slug ?? "" },
+        text: `${p.user_name || "Quelqu'un"} souhaite rejoindre "${title}"`,
+        href: p.hike_slug ? "/hikes/$slug" : undefined,
+        params: p.hike_slug ? { slug: p.hike_slug } : undefined,
       };
     case "request_accepted":
       return {
-        text: `✅ Votre demande pour "${p.hike_title}" a été acceptée !`,
-        href: "/hikes/$slug",
-        params: { slug: p.hike_slug ?? "" },
+        text: `✅ Votre demande pour "${title}" a été acceptée !`,
+        href: p.hike_slug ? "/hikes/$slug" : undefined,
+        params: p.hike_slug ? { slug: p.hike_slug } : undefined,
       };
     case "request_declined":
-      return { text: `❌ Votre demande pour "${p.hike_title}" n'a pas été retenue.` };
+      return {
+        text: `❌ Votre demande pour "${title}" n'a pas été retenue.`,
+        href: p.hike_slug ? "/hikes/$slug" : undefined,
+        params: p.hike_slug ? { slug: p.hike_slug } : undefined,
+      };
     case "new_message":
       return {
-        text: `💬 Nouveau message dans "${p.hike_title}"`,
-        href: "/messages/$hikeId",
-        params: { hikeId: p.hike_id },
+        text: `💬 Nouveau message dans "${title}"`,
+        href: p.hike_id ? "/messages/$hikeId" : undefined,
+        params: p.hike_id ? { hikeId: p.hike_id } : undefined,
       };
     case "reminder_24h":
       return {
-        text: `⏰ Rappel : "${p.hike_title}" commence demain !`,
-        href: "/hikes/$slug",
-        params: { slug: p.hike_slug ?? "" },
+        text: `⏰ Rappel : "${title}" commence demain !`,
+        href: p.hike_slug ? "/hikes/$slug" : undefined,
+        params: p.hike_slug ? { slug: p.hike_slug } : undefined,
       };
     default:
       return { text: n.type };
@@ -140,6 +146,7 @@ function NotificationsPage() {
               const { text, href, params } = labelFor(n);
               const p = n.payload || {};
               const isJoinRequest = n.type === "join_request" && p.participant_id && !p.responded;
+              const isClickable = !!href && !isJoinRequest;
 
               const inner = (
                 <div className="flex items-start gap-3 p-4">
@@ -149,28 +156,30 @@ function NotificationsPage() {
                     <Icon className="h-4 w-4" />
                   </span>
                   <div className="flex-1 min-w-0">
-                    <p className={`text-sm ${n.read_at ? "text-muted-foreground" : "font-medium"}`}>{text}</p>
+                    <p className={`text-sm leading-snug ${n.read_at ? "text-muted-foreground" : "font-medium"}`}>
+                      {text}
+                    </p>
 
                     {p.user_avatar && (
                       p.requester_id ? (
                         <Link
                           to="/profile/$id"
                           params={{ id: p.requester_id }}
-                          className="flex items-center gap-2 mt-1 w-fit hover:underline"
+                          className="flex items-center gap-2 mt-1.5 w-fit hover:underline"
                           onClick={(e) => e.stopPropagation()}
                         >
-                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full" />
+                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
                           <span className="text-xs text-muted-foreground">{p.user_name}</span>
                         </Link>
                       ) : (
-                        <div className="flex items-center gap-2 mt-1">
-                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full" />
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <img src={p.user_avatar} alt="" className="h-5 w-5 rounded-full object-cover" />
                           <span className="text-xs text-muted-foreground">{p.user_name}</span>
                         </div>
                       )
                     )}
 
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
+                    <p className="text-[11px] text-muted-foreground mt-1">
                       {new Date(n.created_at).toLocaleString("fr-FR")}
                     </p>
 
@@ -204,10 +213,11 @@ function NotificationsPage() {
                       </div>
                     )}
                   </div>
+
                   {!n.read_at && (
                     <button
-                      onClick={(e) => { e.preventDefault(); markOne.mutate(n.id); }}
-                      className="text-muted-foreground hover:text-foreground"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); markOne.mutate(n.id); }}
+                      className="text-muted-foreground hover:text-foreground shrink-0 mt-0.5"
                       aria-label="Marquer comme lu"
                     >
                       <X className="h-4 w-4" />
@@ -218,17 +228,19 @@ function NotificationsPage() {
 
               return (
                 <li key={n.id}>
-                  {href && !isJoinRequest ? (
+                  {isClickable ? (
                     <Link
                       to={href as any}
                       params={params}
                       onClick={() => !n.read_at && markOne.mutate(n.id)}
-                      className="block hover:bg-secondary/40 transition"
+                      className="block hover:bg-secondary/40 transition-colors"
                     >
                       {inner}
                     </Link>
                   ) : (
-                    <div className="hover:bg-secondary/40 transition">{inner}</div>
+                    <div className={isJoinRequest ? "" : "hover:bg-secondary/40 transition-colors"}>
+                      {inner}
+                    </div>
                   )}
                 </li>
               );
