@@ -4,7 +4,7 @@ type Props = {
 };
 
 export function QRDisplay({ hikeId, token }: Props) {
-  const url = `${window.location.origin}/checkin?hikeId=${hikeId}&token=${token}`;
+ const url = `${window.location.origin}/checkin?token=${token}`;
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=${encodeURIComponent(url)}`;
 
   return (
