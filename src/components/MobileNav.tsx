@@ -1,11 +1,10 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Map, PlusCircle, Backpack, Bell, type LucideIcon } from "lucide-react";
+import { Home, PlusCircle, Backpack, Bell, type LucideIcon } from "lucide-react";
 
 type Item = { to: string; label: string; icon: LucideIcon; primary?: boolean };
 
 const items: Item[] = [
   { to: "/", label: "Accueil", icon: Home },
-  { to: "/hikes", label: "Carte", icon: Map },
   { to: "/create", label: "Créer", icon: PlusCircle, primary: true },
   { to: "/my-hikes", label: "Mes randos", icon: Backpack },
   { to: "/notifications", label: "Alertes", icon: Bell },
@@ -14,7 +13,7 @@ const items: Item[] = [
 export function MobileNav() {
   return (
     <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 border-t border-border/60 bg-background/85 backdrop-blur-xl">
-      <ul className="grid grid-cols-5 h-16">
+      <ul className="grid grid-cols-4 h-16">
         {items.map(({ to, label, icon: Icon, primary }) => (
           <li key={label} className="flex">
             <Link
