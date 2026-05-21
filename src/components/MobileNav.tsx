@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { Home, Map, PlusCircle, Backpack, Bell, type LucideIcon } from "lucide-react";
+import { Home, PlusCircle, Backpack, Bell, type LucideIcon } from "lucide-react";
 
 type Item = { to: string; label: string; icon: LucideIcon; primary?: boolean };
 
