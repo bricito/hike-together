@@ -1,10 +1,10 @@
 {
   "name": "BlaBlaHike",
-  "short_name": "BlaBlaHike",
+  "short_name": "Rando",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2e7d32",
+  "background_color": "#0f172a",
+  "theme_color": "#16a34a",
   "orientation": "portrait",
   "icons": [
     {
