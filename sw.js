@@ -1,21 +1,19 @@
-const CACHE_NAME = "blablahike-v1";
+// public/sw.js
 
-const urlsToCache = [
-  "/"
-];
-
-self.addEventListener("install", (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(urlsToCache);
-    })
-  );
+// PUSH NOTIFICATIONS
+self.addEventListener("push", (event) => {
+  const data = event.data ? event.data.json() : {};
+  const title = data.title || "BlaBlaHike";
+  const options = {
+    body: data.body || "",
+    icon: "/icon-192.png",
+    data: data.url || "/",
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
 });
 
-self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+// CLIQUE SUR NOTIFICATION
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow(event.notification.data));
 });
