@@ -3,34 +3,27 @@
 
 <head>
   <meta charset="UTF-8" />
-
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
   <title>BlaBlaHike</title>
 
   <!-- PWA -->
-<link rel="manifest" href="/manifest.webmanifest" />
-<meta name="theme-color" content="#16a34a" />
-<link rel="apple-touch-icon" href="/icon-192.png" />
+  <link rel="manifest" href="/manifest.json" />
+  <meta name="theme-color" content="#16a34a" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 
   <!-- iOS support -->
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="BlaBlaHike" />
-
 </head>
 
 <body>
-
-  <!-- React root -->
   <div id="root"></div>
 
-  <!-- Ton app React (IMPORTANT : adapte si besoin) -->
+  <!-- React app -->
   <script type="module" src="/src/index.tsx"></script>
 
-  <!-- ===================== -->
-  <!-- SERVICE WORKER PWA -->
-  <!-- ===================== -->
+  <!-- SERVICE WORKER pour push -->
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
@@ -41,30 +34,20 @@
     }
   </script>
 
-  <!-- ===================== -->
-  <!-- ONESIGNAL PUSH -->
-  <!-- ===================== -->
-
+  <!-- OneSignal Push -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
 
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
     OneSignalDeferred.push(async function (OneSignal) {
-
       await OneSignal.init({
         appId: "1d13442a-efc5-4421-80fe-e5126dd27818",
-
-        notifyButton: {
-          enable: true,
-        },
-
+        notifyButton: { enable: true },
         allowLocalhostAsSecureOrigin: true
       });
-
     });
   </script>
-
 </body>
 
 </html>
