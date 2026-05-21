@@ -139,7 +139,7 @@ function CheckinPage() {
 
         const { data: hike } = await supabase
           .from("hikes")
-          .select("organizer_id")
+          .select("organizer_id,title")
           .eq("id", checkin.hike_id)
           .single();
 
@@ -158,6 +158,9 @@ function CheckinPage() {
         // -----------------------------------
 
         if (hike?.organizer_id) {
+          const pseudo = profile?.pseudo || "Un participant";
+          const hikeTitle = hike?.title || "une randonnée";
+          
           await supabase.from("notifications").insert({
             user_id: hike.organizer_id,
             type: "hike_checkin",
