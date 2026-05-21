@@ -43,9 +43,19 @@
     OneSignalDeferred.push(async function (OneSignal) {
       await OneSignal.init({
         appId: "1d13442a-efc5-4421-80fe-e5126dd27818",
-        notifyButton: { enable: true },
-        allowLocalhostAsSecureOrigin: true
+        allowLocalhostAsSecureOrigin: true,
+        promptOptions: {
+          actionMessage: "Souhaitez-vous recevoir des notifications de BlaBlaHike ?",
+          acceptButtonText: "Oui",
+          cancelButtonText: "Non"
+        },
+        notifyButton: {
+          enable: true
+        }
       });
+
+      // Affiche le pop-up automatiquement pour demander la permission
+      OneSignal.showSlidedownPrompt();
     });
   </script>
 </body>
