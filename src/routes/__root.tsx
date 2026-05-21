@@ -74,7 +74,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
+      { title: "Blablahike.eu" },
       { name: "description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lovable App" },
