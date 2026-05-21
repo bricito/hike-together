@@ -89,7 +89,7 @@ serve(async () => {
       // Liens
       // -----------------------------------
 
-      const hikeLink = `https://tonsite.com/hikes/${hike.id}`;
+      const hikeLink = `https://blablahike.eu/hikes/${hike.id}`;
 
       // -----------------------------------
       // Envoi email
