@@ -2,37 +2,19 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend";
 
-// -----------------------------------
-// Initialisation
-// -----------------------------------
-
-const resend = new Resend(
-  Deno.env.get("RESEND_API_KEY")
-);
+const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
 
-// -----------------------------------
-// Fonction principale
-// -----------------------------------
-
 serve(async () => {
   try {
-    // Heure actuelle
     const now = new Date();
 
-    // Randonnées qui commencent dans 30 min
-    const in30min = new Date(
-      now.getTime() + 30 * 60 * 1000
-    );
-
-    // Fenêtre de tolérance de 5 min
-    const in35min = new Date(
-      now.getTime() + 35 * 60 * 1000
-    );
+    const in30min = new Date(now.getTime() + 30 * 60 * 1000);
+    const in35min = new Date(now.getTime() + 35 * 60 * 1000);
 
     // -----------------------------------
     // Récupération des randonnées
@@ -44,109 +26,102 @@ serve(async () => {
         id,
         title,
         starts_at,
-        organizer_id
+        organizer_id,
+        checkin_token
       `)
       .eq("reminder_sent", false)
       .gte("starts_at", in30min.toISOString())
       .lte("starts_at", in35min.toISOString());
 
     if (error) {
-      console.error("Erreur hikes:", error);
-
-      return new Response(
-        JSON.stringify(error),
-        {
-          status: 500,
-        }
-      );
+      console.error(error);
+      return new Response(JSON.stringify(error), { status: 500 });
     }
 
-    // -----------------------------------
-    // Boucle randonnées
-    // -----------------------------------
-
     for (const hike of hikes || []) {
+
       // -----------------------------------
-      // Récupération organisateur
+      // Récup organisateur (EMAIL via AUTH)
       // -----------------------------------
 
-      const { data: organizer } = await supabase
-        .from("profiles")
-        .select("email, pseudo")
-        .eq("id", hike.organizer_id)
+      const { data: userData } =
+        await supabase.auth.admin.getUserById(hike.organizer_id);
+
+      const email = userData?.user?.email;
+
+      if (!email) continue;
+
+      // -----------------------------------
+      // Lien randonnée + QR code
+      // -----------------------------------
+
+      const hikeLink = `https://blablahike.eu/hikes/${hike.id}`;
+
+      const qrCodeUrl = `https://blablahike.eu/api/qrcode?token=${hike.checkin_token}`;
+
+      // -----------------------------------
+      // Anti-doublon simple
+      // -----------------------------------
+
+      const { data: alreadySent } = await supabase
+        .from("hikes")
+        .select("reminder_sent")
+        .eq("id", hike.id)
         .single();
 
-      if (!organizer?.email) {
-        console.log(
-          "Aucun email organisateur pour:",
-          hike.id
-        );
-
-        continue;
-      }
+      if (alreadySent?.reminder_sent) continue;
 
       // -----------------------------------
-      // Liens
+      // EMAIL
       // -----------------------------------
 
-      const hikeLink = `https://tonsite.com/hikes/${hike.id}`;
+      await resend.emails.send({
+        from: "onboarding@resend.dev",
+        to: email,
+        subject: "⏰ Rappel randonnée - check-in participants",
+        html: `
+          <div style="font-family: Arial; padding: 20px;">
+
+            <h2>⏰ Ta randonnée commence bientôt</h2>
+
+            <p>
+              <strong>${hike.title}</strong> commence dans environ 30 minutes.
+            </p>
+
+            <p>
+              👉 Pense à demander aux participants de scanner leur QR code pour valider leur présence.
+            </p>
+
+            <p>
+              <a href="${hikeLink}">
+                Voir la randonnée
+              </a>
+            </p>
+
+            <hr />
+
+            <h3>📱 QR Code de check-in</h3>
+
+            <p>Les participants doivent scanner ce QR :</p>
+
+            <img 
+              src="${qrCodeUrl}" 
+              width="200" 
+              style="border-radius:12px;"
+            />
+
+            <p style="font-size:12px;color:#666;">
+              Si l’image ne s’affiche pas, partage ce lien :
+              <br/>
+              ${qrCodeUrl}
+            </p>
+
+          </div>
+        `,
+      });
 
       // -----------------------------------
-      // Envoi email
-      // -----------------------------------
-
-      const emailResponse =
-        await resend.emails.send({
-          from: "onboarding@resend.dev",
-          to: organizer.email,
-          subject: `Rappel avant votre randonnée`,
-          html: `
-            <div style="font-family:sans-serif;padding:20px;">
-              
-              <h2>
-                Bonjour ${
-                  organizer.pseudo || ""
-                } 👋
-              </h2>
-
-              <p>
-                Votre randonnée
-                <strong>${hike.title}</strong>
-                commence dans 30 minutes.
-              </p>
-
-              <p>
-                Pensez à demander aux participants
-                de valider leur présence via le QR code.
-              </p>
-
-              <p>
-                <a 
-                  href="${hikeLink}"
-                  style="
-                    display:inline-block;
-                    padding:12px 18px;
-                    background:black;
-                    color:white;
-                    text-decoration:none;
-                    border-radius:8px;
-                  "
-                >
-                  Voir la randonnée
-                </a>
-              </p>
-
-            </div>
-          `,
-        });
-
-      console.log(
-        "Email envoyé:",
-        emailResponse
-      );
-
-      // -----------------------------------
-      // Marquer rappel envoyé
+      // Marquer comme envoyé
       // -----------------------------------
 
       await supabase
@@ -157,28 +132,13 @@ serve(async () => {
         .eq("id", hike.id);
     }
 
-    // -----------------------------------
-    // Réponse OK
-    // -----------------------------------
+    return new Response(JSON.stringify({ success: true }));
 
-    return new Response(
-      JSON.stringify({
-        success: true,
-      }),
-      {
-        status: 200,
-      }
-    );
   } catch (e) {
-    console.error("Erreur globale:", e);
+    console.error(e);
 
-    return new Response(
-      JSON.stringify({
-        error: String(e),
-      }),
-      {
-        status: 500,
-      }
-    );
+    return new Response(JSON.stringify({ error: String(e) }), {
+      status: 500,
+    });
   }
 });
