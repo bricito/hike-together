@@ -3,8 +3,8 @@ import { useParams } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL!,
-  import.meta.env.VITE_SUPABASE_ANON_KEY!
+  (import.meta.env.VITE_SUPABASE_URL || (globalThis as any).VITE_SUPABASE_URL) as string,
+  (import.meta.env.VITE_SUPABASE_ANON_KEY || (globalThis as any).VITE_SUPABASE_ANON_KEY) as string
 );
 
 type Participant = {
