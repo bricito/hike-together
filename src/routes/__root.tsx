@@ -70,23 +70,23 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Blablahike.eu" },
-      { name: "description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
-      { name: "twitter:title", content: "Lovable App" },
-      { name: "twitter:description", content: "Hike Together connects hikers to discover and join local outdoor adventures." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b10554f0-8c1a-465a-a3a4-4756b336868d/id-preview-7196effb--7edad3d3-0ad1-4246-a80c-9651952a5013.lovable.app-1778168115431.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/b10554f0-8c1a-465a-a3a4-4756b336868d/id-preview-7196effb--7edad3d3-0ad1-4246-a80c-9651952a5013.lovable.app-1778168115431.png" },
-    ],
+ head: () => ({
+  meta: [
+    { charSet: "utf-8" },
+    { name: "viewport", content: "width=device-width, initial-scale=1" },
+    { title: "Blablahike.eu" },
+    { name: "theme-color", content: "#16a34a" },
+    { name: "apple-mobile-web-app-capable", content: "yes" },
+    { name: "apple-mobile-web-app-status-bar-style", content: "default" },
+    { name: "apple-mobile-web-app-title", content: "BlaBlaHike" },
+    // ... vos autres meta existants
+  ],
+  links: [
+    { rel: "stylesheet", href: appCss },
+    { rel: "manifest", href: "/manifest.json" },
+    { rel: "apple-touch-icon", href: "/icon-192.png" },
+  ],
+}),
     links: [
       {
         rel: "stylesheet",
@@ -114,8 +114,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+import { useEffect } from "react";
+import { initOneSignal } from "@/lib/onesignal";
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    initOneSignal();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
