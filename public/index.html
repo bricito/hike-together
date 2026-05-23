@@ -33,26 +33,34 @@
       });
     }
   </script>
+<!-- OneSignal Push -->
+<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
 
-  <!-- OneSignal Push -->
-  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
+<script>
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-  <script>
-    window.OneSignalDeferred = window.OneSignalDeferred || [];
+  OneSignalDeferred.push(async function (OneSignal) {
+    await OneSignal.init({
+      appId: "1d13442a-efc5-4421-80fe-e5126dd27818",
+      allowLocalhostAsSecureOrigin: true,
 
-    OneSignalDeferred.push(async function (OneSignal) {
-      await OneSignal.init({
-        appId: "1d13442a-efc5-4421-80fe-e5126dd27818",
-        allowLocalhostAsSecureOrigin: true,
-        promptOptions: {
-          actionMessage: "Souhaitez-vous recevoir des notifications de BlaBlaHike ?",
-          acceptButtonText: "Oui",
-          cancelButtonText: "Non"
-        },
-        notifyButton: {
-          enable: true
-        }
-      });
+      promptOptions: {
+        actionMessage: "Souhaitez-vous recevoir des notifications de BlaBlaHike ?",
+        acceptButtonText: "Oui",
+        cancelButtonText: "Non"
+      },
+
+      notifyButton: {
+        enable: true
+      }
+    });
+
+    // Nouvelle API OneSignal v16
+    if (OneSignal?.Slidedown?.promptPush) {
+      await OneSignal.Slidedown.promptPush();
+    }
+  });
+</script>
 
       // Affiche le pop-up automatiquement pour demander la permission
       OneSignal.showSlidedownPrompt();
