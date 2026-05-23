@@ -68,7 +68,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "BlaBlaHike" },
+      { title: "BlaBlaHike — Randonnées entre passionnés" },
+      { name: "description", content: "Trouvez et rejoignez des randonnées près de chez vous. BlablaHike connecte les randonneurs pour des sorties conviviales et funs !" },
       { name: "theme-color", content: "#16a34a" },
       { name: "apple-mobile-web-app-capable", content: "yes" },
       { name: "apple-mobile-web-app-title", content: "BlaBlaHike" },
