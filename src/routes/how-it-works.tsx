@@ -83,8 +83,7 @@ function HowItWorksPage() {
             </h1>
 
             <p className="max-w-3xl mx-auto text-lg text-muted-foreground leading-relaxed">
-              BlablaHike permet de trouver des compagnons de randonnée,
-              exactement comme le principe de BlaBlaCar :
+              BlablaHike permet de trouver des compagnons de randonnée :
               un organisateur propose une sortie,
               des participants rejoignent l’aventure,
               tout le monde échange via la messagerie,
