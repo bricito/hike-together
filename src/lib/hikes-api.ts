@@ -270,6 +270,17 @@ export async function requestToJoinHike(hikeId: string) {
         requester_id:   u.user.id,
         user_name:      profile?.full_name ?? "Quelqu'un",
         user_avatar:    profile?.avatar_url ?? null,
+        
+    },
+  });
+
+        // Email à l'organisateur
+if (hike) {
+  await supabase.functions.invoke("send-join-request-email", {
+    body: {
+      hike_id: hikeId,
+      requester_id: u.user.id,
+
       },
     });
   }
