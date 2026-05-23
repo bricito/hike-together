@@ -257,34 +257,37 @@ export async function requestToJoinHike(hikeId: string) {
       .single(),
   ]);
 
-  if (hike) {
-    // Notifie l'organisateur avec le titre de la randonnée dans le payload
-    await supabase.from("notifications").insert({
-      user_id: hike.organizer_id,
-      type: "join_request",
-      payload: {
-        hike_title:     hike.title,
-        hike_slug:      hike.slug,
-        hike_id:        hikeId,
-        participant_id: data.id,
-        requester_id:   u.user.id,
-        user_name:      profile?.full_name ?? "Quelqu'un",
-        user_avatar:    profile?.avatar_url ?? null,
-        
+ if (hike) {
+  // Notification organisateur
+  await supabase.from("notifications").insert({
+    user_id: hike.organizer_id,
+    type: "join_request",
+    payload: {
+      hike_title: hike.title,
+      hike_slug: hike.slug,
+      hike_id: hikeId,
+      participant_id: data.id,
+      requester_id: u.user.id,
+      user_name: profile?.full_name ?? "Quelqu'un",
+      user_avatar: profile?.avatar_url ?? null,
     },
   });
 
-        // Email à l'organisateur
-if (hike) {
-  await supabase.functions.invoke("send-join-request-email", {
-    body: {
-      hike_id: hikeId,
-      requester_id: u.user.id,
-
+  // Email organisateur
+  const { error: mailError } = await supabase.functions.invoke(
+    "send-join-request-email",
+    {
+      body: {
+        hike_id: hikeId,
+        requester_id: u.user.id,
       },
-    });
-  }
+    }
+  );
 
+  if (mailError) {
+    console.error(mailError);
+  }
+}
   return data as { id: string; status: ParticipantStatus };
 }
 
