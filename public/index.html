@@ -1,34 +1,65 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>BlaBlaHike</title>
 
+  <!-- PWA -->
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#16a34a" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <!-- iOS support -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="BlaBlaHike" />
 </head>
 
 <body>
   <div id="root"></div>
 
+  <!-- React app -->
+  <script type="module" src="/src/index.tsx"></script>
+
+  <!-- SERVICE WORKER pour push -->
+  <script>
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("/sw.js")
+          .then(() => console.log("SW enregistré"))
+          .catch((err) => console.error("SW error:", err));
+      });
+    }
+  </script>
+
+  <!-- OneSignal Push -->
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" async></script>
 
   <script>
     window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-    OneSignalDeferred.push(async function(OneSignal) {
+    OneSignalDeferred.push(async function (OneSignal) {
       await OneSignal.init({
-        appId: "1d13442a-efc5-4421-80fe-e5126dd27818"
+        appId: "1d13442a-efc5-4421-80fe-e5126dd27818",
+        notifyButton: { enable: true },
+        allowLocalhostAsSecureOrigin: true
+        allowLocalhostAsSecureOrigin: true,
+        promptOptions: {
+          actionMessage: "Souhaitez-vous recevoir des notifications de BlaBlaHike ?",
+          acceptButtonText: "Oui",
+          cancelButtonText: "Non"
+        },
+        notifyButton: {
+          enable: true
+        }
       });
 
-      if (OneSignal &&
-          OneSignal.Slidedown &&
-          OneSignal.Slidedown.promptPush) {
-
-        await OneSignal.Slidedown.promptPush();
-      }
+      // Affiche le pop-up automatiquement pour demander la permission
+      OneSignal.showSlidedownPrompt();
     });
   </script>
 </body>
+
 </html>
