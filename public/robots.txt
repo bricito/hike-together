@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Disallow: /me
+Disallow: /messages
+Disallow: /notifications
+Disallow: /my-hikes
+Disallow: /create
+Disallow: /checkin
+Disallow: /super-admin-8472
+Disallow: /reset-password
+
+Sitemap: https://blablahike.eu/sitemap.xml
