@@ -8,15 +8,7 @@ export async function initOneSignal() {
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-  window.OneSignalDeferred.push(async (OneSignal: any) => {
-    await OneSignal.init({
-      appId: ONESIGNAL_APP_ID,
-      allowLocalhostAsSecureOrigin: true,
-      serviceWorkerParam: { scope: "/" },
-      serviceWorkerPath: "/OneSignalSDKWorker.js",
-      notifyButton: {
-        enable: true,
-      },
+
     });
 
     // Demande la permission si pas encore décidée
