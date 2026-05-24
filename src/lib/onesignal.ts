@@ -7,14 +7,22 @@ export async function initOneSignal() {
   await loadOneSignalScript();
   
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal: any) => {
+ window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.init({
       appId: ONESIGNAL_APP_ID,
       allowLocalhostAsSecureOrigin: true,
       serviceWorkerParam: { scope: "/" },
       serviceWorkerPath: "/OneSignalSDKWorker.js",
       notifyButton: {
-        enable: true, // ← active le bouton flottant OneSignal
+        enable: true,
+      },
+    });
+
+    // Demande la permission directement si pas encore décidé
+    if (Notification.permission === "default") {
+      await Notification.requestPermission();
+      // Puis enregistre dans OneSignal
+      await OneSignal.Notifications.requestPermission();
       },
     });
   });
