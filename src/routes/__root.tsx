@@ -64,17 +64,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function NotificationBanner() {
   const [dismissed, setDismissed] = useState(false);
-  const [permission, setPermission] = useState<string>("default");
+  const [show, setShow] = useState(false);
 
   useEffect(() => {
-    if (typeof Notification !== "undefined") {
-      setPermission(Notification.permission);
+    // Vérifie côté client uniquement
+    if (typeof Notification === "undefined") return;
+    if (Notification.permission === "default") {
+      setShow(true);
     }
   }, []);
 
-  if (dismissed) return null;
-  if (typeof Notification === "undefined") return null;
-  if (permission !== "default") return null;
+  if (!show || dismissed) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 bg-card border border-border rounded-2xl p-4 shadow-lg flex items-center gap-3 md:max-w-sm md:left-auto md:right-4">
@@ -84,7 +84,6 @@ function NotificationBanner() {
         className="text-xs bg-primary text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap"
         onClick={async () => {
           const result = await Notification.requestPermission();
-          setPermission(result);
           if (result === "granted") {
             window.OneSignalDeferred = window.OneSignalDeferred || [];
             window.OneSignalDeferred.push(async (OneSignal: any) => {
@@ -92,13 +91,14 @@ function NotificationBanner() {
             });
           }
           setDismissed(true);
+          setShow(false);
         }}
       >
         Activer
       </button>
       <button
         className="text-xs text-muted-foreground"
-        onClick={() => setDismissed(true)}
+        onClick={() => { setDismissed(true); setShow(false); }}
       >
         ✕
       </button>
