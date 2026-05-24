@@ -15,7 +15,7 @@ export async function initOneSignal() {
       serviceWorkerPath: "/OneSignalSDKWorker.js",
       notifyButton: {
         enable: true,
-      },
+      }
     });
 
     // Demande la permission directement si pas encore décidé
@@ -23,7 +23,7 @@ export async function initOneSignal() {
       await Notification.requestPermission();
       // Puis enregistre dans OneSignal
       await OneSignal.Notifications.requestPermission();
-      },
+      }
     });
   });
 }
