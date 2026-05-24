@@ -3,11 +3,12 @@ const ONESIGNAL_APP_ID = "1d13442a-efc5-4421-80fe-e5126dd27818";
 export async function initOneSignal() {
   if (typeof window === "undefined") return;
   if (typeof Notification === "undefined") return;
-  
+
   await loadOneSignalScript();
-  
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
- window.OneSignalDeferred.push(async (OneSignal: any) => {
+
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.init({
       appId: ONESIGNAL_APP_ID,
       allowLocalhostAsSecureOrigin: true,
@@ -15,16 +16,16 @@ export async function initOneSignal() {
       serviceWorkerPath: "/OneSignalSDKWorker.js",
       notifyButton: {
         enable: true,
-      }
+      },
     });
 
-    // Demande la permission directement si pas encore décidé
+    // Demande la permission si pas encore décidée
     if (Notification.permission === "default") {
       await Notification.requestPermission();
+
       // Puis enregistre dans OneSignal
       await OneSignal.Notifications.requestPermission();
-      }
-    });
+    }
   });
 }
 
@@ -34,17 +35,25 @@ function loadOneSignalScript(): Promise<void> {
       resolve();
       return;
     }
+
     const script = document.createElement("script");
-    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+
+    script.src =
+      "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
+
     script.async = true;
+
     script.onload = () => resolve();
+
     document.head.appendChild(script);
   });
 }
 
 export async function requestNotificationPermission() {
   if (typeof window === "undefined") return;
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+
   window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.Notifications.requestPermission();
   });
@@ -52,7 +61,9 @@ export async function requestNotificationPermission() {
 
 export async function setOneSignalUser(userId: string) {
   if (typeof window === "undefined") return;
+
   window.OneSignalDeferred = window.OneSignalDeferred || [];
+
   window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.login(userId);
   });
@@ -60,6 +71,7 @@ export async function setOneSignalUser(userId: string) {
 
 export async function areNotificationsEnabled(): Promise<boolean> {
   if (typeof window === "undefined") return false;
+
   return Notification.permission === "granted";
 }
 
