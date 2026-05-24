@@ -1,4 +1,3 @@
-import { initOneSignal, requestNotificationPermission } from "@/lib/onesignal";
 import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
@@ -9,11 +8,10 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
-import { initOneSignal } from "@/lib/onesignal";
+import { initOneSignal, requestNotificationPermission } from "@/lib/onesignal";
 
 function NotFoundComponent() {
   return (
@@ -32,7 +30,6 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-
   return (
     <div className="flex min-h-screen items-center justify-center">
       <div className="text-center">
@@ -81,7 +78,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { rel: "apple-touch-icon", href: "/icon-192.png" },
     ],
   }),
-
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -94,12 +90,10 @@ function RootComponent() {
   useEffect(() => {
     initOneSignal();
 
-    // Demande après la première interaction utilisateur
     const askPermission = async () => {
       if (Notification.permission === "default") {
         await requestNotificationPermission();
       }
-      // Retire les listeners après la première interaction
       document.removeEventListener("click", askPermission);
       document.removeEventListener("scroll", askPermission);
       document.removeEventListener("touchstart", askPermission);
