@@ -2,6 +2,7 @@ const ONESIGNAL_APP_ID = "1d13442a-efc5-4421-80fe-e5126dd27818";
 
 export async function initOneSignal() {
   if (typeof window === "undefined") return;
+  if (typeof Notification === "undefined") return;
   
   await loadOneSignalScript();
   
@@ -12,9 +13,10 @@ export async function initOneSignal() {
       allowLocalhostAsSecureOrigin: true,
       serviceWorkerParam: { scope: "/" },
       serviceWorkerPath: "/OneSignalSDKWorker.js",
+      notifyButton: {
+        enable: true, // ← active le bouton flottant OneSignal
+      },
     });
-      // Demande la permission automatiquement après l'init
-    await OneSignal.Notifications.requestPermission();
   });
 }
 
@@ -32,19 +34,19 @@ function loadOneSignalScript(): Promise<void> {
   });
 }
 
+export async function requestNotificationPermission() {
+  if (typeof window === "undefined") return;
+  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    await OneSignal.Notifications.requestPermission();
+  });
+}
+
 export async function setOneSignalUser(userId: string) {
   if (typeof window === "undefined") return;
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.login(userId);
-  });
-}
-
-export async function requestNotificationPermission() {
-  if (typeof window === "undefined") return;
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async (OneSignal: any) => {
-    await OneSignal.Slidedown.promptPush();
   });
 }
 
@@ -59,8 +61,6 @@ export async function sendPushNotification(params: {
   message: string;
   url?: string;
 }) {
-  // À appeler depuis votre backend/edge function Supabase
-  // OneSignal REST API ne doit pas être appelée côté client (clé API secrète)
   console.warn("sendPushNotification doit être appelé côté serveur");
 }
 
