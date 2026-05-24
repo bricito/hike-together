@@ -64,18 +64,17 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function NotificationBanner() {
   const [show, setShow] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Délai pour s'assurer qu'on est côté client
-  useEffect(() => {
-  const timer = setTimeout(() => {
-    alert(`Notification: ${typeof Notification} | permission: ${typeof Notification !== "undefined" ? Notification.permission : "N/A"} | show: ${typeof Notification !== "undefined" && Notification.permission === "default"}`);
-  }, 2000);
-  return () => clearTimeout(timer);
-}, []);
+    const timer = setTimeout(() => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        setShow(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
-  if (!show || dismissed) return null;
+  if (!show) return null;
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 bg-card border border-border rounded-2xl p-4 shadow-lg flex items-center gap-3 md:max-w-sm md:left-auto md:right-4">
@@ -105,6 +104,7 @@ function NotificationBanner() {
     </div>
   );
 }
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
