@@ -63,15 +63,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 function NotificationBanner() {
-  const [dismissed, setDismissed] = useState(false);
   const [show, setShow] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Vérifie côté client uniquement
-    if (typeof Notification === "undefined") return;
-    if (Notification.permission === "default") {
-      setShow(true);
-    }
+    // Délai pour s'assurer qu'on est côté client
+    const timer = setTimeout(() => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        setShow(true);
+      }
+    }, 2000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   if (!show || dismissed) return null;
@@ -90,7 +93,6 @@ function NotificationBanner() {
               await OneSignal.Notifications.requestPermission();
             });
           }
-          setDismissed(true);
           setShow(false);
         }}
       >
@@ -98,14 +100,13 @@ function NotificationBanner() {
       </button>
       <button
         className="text-xs text-muted-foreground"
-        onClick={() => { setDismissed(true); setShow(false); }}
+        onClick={() => setShow(false)}
       >
         ✕
       </button>
     </div>
   );
 }
-
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
