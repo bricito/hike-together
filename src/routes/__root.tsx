@@ -68,14 +68,12 @@ function NotificationBanner() {
 
   useEffect(() => {
     // Délai pour s'assurer qu'on est côté client
-    const timer = setTimeout(() => {
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
-        setShow(true);
-      }
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  useEffect(() => {
+  const timer = setTimeout(() => {
+    alert(`Notification: ${typeof Notification} | permission: ${typeof Notification !== "undefined" ? Notification.permission : "N/A"} | show: ${typeof Notification !== "undefined" && Notification.permission === "default"}`);
+  }, 2000);
+  return () => clearTimeout(timer);
+}, []);
 
   if (!show || dismissed) return null;
 
