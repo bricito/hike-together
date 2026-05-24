@@ -7,8 +7,15 @@ export async function initOneSignal() {
   await loadOneSignalScript();
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-
-   
+  window.OneSignalDeferred.push(async (OneSignal: any) => {
+    await OneSignal.init({
+      appId: ONESIGNAL_APP_ID,
+      allowLocalhostAsSecureOrigin: true,
+      serviceWorkerParam: { scope: "/" },
+      serviceWorkerPath: "/OneSignalSDKWorker.js",
+      notifyButton: { enable: true },
+    });
+  });
 }
 
 function loadOneSignalScript(): Promise<void> {
@@ -17,35 +24,33 @@ function loadOneSignalScript(): Promise<void> {
       resolve();
       return;
     }
-
     const script = document.createElement("script");
-
-    script.src =
-      "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
-
+    script.src = "https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js";
     script.async = true;
-
     script.onload = () => resolve();
-
     document.head.appendChild(script);
   });
 }
 
 export async function requestNotificationPermission() {
   if (typeof window === "undefined") return;
+  if (typeof Notification === "undefined") return;
 
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
+  // Demande la permission native du navigateur
+  const permission = await Notification.requestPermission();
 
-  window.OneSignalDeferred.push(async (OneSignal: any) => {
-    await OneSignal.Notifications.requestPermission();
-  });
+  if (permission === "granted") {
+    // Enregistre dans OneSignal
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+    window.OneSignalDeferred.push(async (OneSignal: any) => {
+      await OneSignal.Notifications.requestPermission();
+    });
+  }
 }
 
 export async function setOneSignalUser(userId: string) {
   if (typeof window === "undefined") return;
-
   window.OneSignalDeferred = window.OneSignalDeferred || [];
-
   window.OneSignalDeferred.push(async (OneSignal: any) => {
     await OneSignal.login(userId);
   });
@@ -53,7 +58,7 @@ export async function setOneSignalUser(userId: string) {
 
 export async function areNotificationsEnabled(): Promise<boolean> {
   if (typeof window === "undefined") return false;
-
+  if (typeof Notification === "undefined") return false;
   return Notification.permission === "granted";
 }
 
