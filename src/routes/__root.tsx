@@ -65,17 +65,14 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function NotificationBanner() {
   const [show, setShow] = useState(false);
 
-useEffect(() => {
-  const timer = setTimeout(() => {
-    const notifType = typeof Notification;
-    const perm = typeof Notification !== "undefined" ? Notification.permission : "N/A";
-    alert(`type: ${notifType} | perm: ${perm}`);
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      setShow(true);
-    }
-  }, 2000);
-  return () => clearTimeout(timer);
-}, []);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        setShow(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!show) return null;
 
