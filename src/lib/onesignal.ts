@@ -8,17 +8,7 @@ export async function initOneSignal() {
 
   window.OneSignalDeferred = window.OneSignalDeferred || [];
 
-
-    });
-
-    // Demande la permission si pas encore décidée
-    if (Notification.permission === "default") {
-      await Notification.requestPermission();
-
-      // Puis enregistre dans OneSignal
-      await OneSignal.Notifications.requestPermission();
-    }
-  });
+   
 }
 
 function loadOneSignalScript(): Promise<void> {
