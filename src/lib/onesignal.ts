@@ -13,6 +13,8 @@ export async function initOneSignal() {
       serviceWorkerParam: { scope: "/" },
       serviceWorkerPath: "/OneSignalSDKWorker.js",
     });
+      // Demande la permission automatiquement après l'init
+    await OneSignal.Notifications.requestPermission();
   });
 }
 
