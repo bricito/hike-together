@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -11,7 +11,8 @@ import {
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
-import { initOneSignal, requestNotificationPermission } from "@/lib/onesignal";
+import { initOneSignal } from "@/lib/onesignal";
+import { Bell } from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -61,6 +62,50 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+function NotificationBanner() {
+  const [dismissed, setDismissed] = useState(false);
+  const [permission, setPermission] = useState<string>("default");
+
+  useEffect(() => {
+    if (typeof Notification !== "undefined") {
+      setPermission(Notification.permission);
+    }
+  }, []);
+
+  if (dismissed) return null;
+  if (typeof Notification === "undefined") return null;
+  if (permission !== "default") return null;
+
+  return (
+    <div className="fixed bottom-20 left-4 right-4 z-50 bg-card border border-border rounded-2xl p-4 shadow-lg flex items-center gap-3 md:max-w-sm md:left-auto md:right-4">
+      <Bell className="h-5 w-5 text-primary shrink-0" />
+      <p className="text-sm flex-1">Activez les notifications pour rester informé</p>
+      <button
+        className="text-xs bg-primary text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap"
+        onClick={async () => {
+          const result = await Notification.requestPermission();
+          setPermission(result);
+          if (result === "granted") {
+            window.OneSignalDeferred = window.OneSignalDeferred || [];
+            window.OneSignalDeferred.push(async (OneSignal: any) => {
+              await OneSignal.Notifications.requestPermission();
+            });
+          }
+          setDismissed(true);
+        }}
+      >
+        Activer
+      </button>
+      <button
+        className="text-xs text-muted-foreground"
+        onClick={() => setDismissed(true)}
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
     meta: [
@@ -89,25 +134,6 @@ function RootComponent() {
 
   useEffect(() => {
     initOneSignal();
-
-    const askPermission = async () => {
-      if (Notification.permission === "default") {
-        await requestNotificationPermission();
-      }
-      document.removeEventListener("click", askPermission);
-      document.removeEventListener("scroll", askPermission);
-      document.removeEventListener("touchstart", askPermission);
-    };
-
-    document.addEventListener("click", askPermission, { once: true });
-    document.addEventListener("scroll", askPermission, { once: true });
-    document.addEventListener("touchstart", askPermission, { once: true });
-
-    return () => {
-      document.removeEventListener("click", askPermission);
-      document.removeEventListener("scroll", askPermission);
-      document.removeEventListener("touchstart", askPermission);
-    };
   }, []);
 
   return (
@@ -115,6 +141,7 @@ function RootComponent() {
       <AuthProvider>
         <Outlet />
         <Toaster />
+        <NotificationBanner />
       </AuthProvider>
     </QueryClientProvider>
   );
