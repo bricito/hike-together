@@ -92,6 +92,27 @@ function RootComponent() {
 
   useEffect(() => {
     initOneSignal();
+
+    // Demande après la première interaction utilisateur
+    const askPermission = async () => {
+      if (Notification.permission === "default") {
+        await requestNotificationPermission();
+      }
+      // Retire les listeners après la première interaction
+      document.removeEventListener("click", askPermission);
+      document.removeEventListener("scroll", askPermission);
+      document.removeEventListener("touchstart", askPermission);
+    };
+
+    document.addEventListener("click", askPermission, { once: true });
+    document.addEventListener("scroll", askPermission, { once: true });
+    document.addEventListener("touchstart", askPermission, { once: true });
+
+    return () => {
+      document.removeEventListener("click", askPermission);
+      document.removeEventListener("scroll", askPermission);
+      document.removeEventListener("touchstart", askPermission);
+    };
   }, []);
 
   return (
