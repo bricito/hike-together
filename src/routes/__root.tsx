@@ -1,3 +1,4 @@
+import { initFirebase, requestFCMToken } from "@/lib/firebase";
 import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
