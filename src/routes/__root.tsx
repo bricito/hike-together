@@ -130,6 +130,15 @@ function RootComponent() {
 
   useEffect(() => {
     initFirebase();
+
+    // Si permission déjà accordée, sauvegarde le token automatiquement
+    const saveTokenIfGranted = async () => {
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        await requestFCMToken();
+      }
+    };
+
+    saveTokenIfGranted();
   }, []);
 
   return (
