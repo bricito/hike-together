@@ -11,7 +11,7 @@ import {
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
-import { initOneSignal } from "@/lib/onesignal";
+import { initFirebase, requestFCMToken } from "@/lib/firebase";
 import { Bell } from "lucide-react";
 
 function NotFoundComponent() {
@@ -83,12 +83,9 @@ function NotificationBanner() {
       <button
         className="text-xs bg-primary text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap"
         onClick={async () => {
-          const result = await Notification.requestPermission();
-          if (result === "granted") {
-            window.OneSignalDeferred = window.OneSignalDeferred || [];
-            window.OneSignalDeferred.push(async (OneSignal: any) => {
-              await OneSignal.Notifications.requestPermission();
-            });
+          const token = await requestFCMToken();
+          if (token) {
+            console.log("FCM token:", token);
           }
           setShow(false);
         }}
@@ -132,7 +129,7 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   useEffect(() => {
-    initOneSignal();
+    initFirebase();
   }, []);
 
   return (
