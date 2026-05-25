@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
 import { getMessaging, getToken, onMessage } from "firebase/messaging";
+import { supabase } from "@/integrations/supabase/client";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASXPKgPPWiIDaF5p3IVpcKOQeC8_rjXVo",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 const VAPID_KEY = "BHuwDJxqVdVYdsANvO92szbl8UYa_ub2KdzkbzjVwKkcu9g84IWRKYaVZPDaS0guwcD5qC3WdwWxHaWWYWvE-t0";
 
 export function initFirebase() {
+  if (typeof window === "undefined") return;
   if (getApps().length === 0) {
     initializeApp(firebaseConfig);
   }
@@ -30,6 +32,20 @@ export async function requestFCMToken(): Promise<string | null> {
     const { getMessaging, getToken } = await import("firebase/messaging");
     const messaging = getMessaging();
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+
+    if (token) {
+      // Sauvegarde le token en base
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from("fcm_tokens")
+          .upsert(
+            { user_id: user.id, token, updated_at: new Date().toISOString() },
+            { onConflict: "token" }
+          );
+      }
+    }
+
     return token;
   } catch (error) {
     console.error("FCM token error:", error);
