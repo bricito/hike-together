@@ -18,19 +18,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+useEffect(() => {
+  const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
+    setSession(s);
+    setUser(s?.user ?? null);
 
-  useEffect(() => {
-    const { data: sub } = supabase.auth.onAuthStateChange((_evt, s) => {
-      setSession(s);
-      setUser(s?.user ?? null);
-    });
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      setUser(data.session?.user ?? null);
-      setLoading(false);
-    });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    // Enregistre le token FCM après login
+    if (s?.user) {
+      import("@/lib/firebase").then(({ initFirebase, requestFCMToken }) => {
+        initFirebase();
+        requestFCMToken();
+      });
+    }
+  });
+  // ..
 
   const value: AuthCtx = {
     user,
