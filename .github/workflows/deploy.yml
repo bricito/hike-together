@@ -32,3 +32,7 @@ jobs:
         run: supabase functions deploy send-checkin-reminder --project-ref zyxeupstiihvrzelbgwi
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      - name: Deploy Supabase Functions
+  run: supabase functions deploy send-fcm-notification --project-ref zyxeupstiihvrzelbgwi
+  env:
+    SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
