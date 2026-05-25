@@ -70,7 +70,7 @@ function AboutPage() {
           <p className="mt-2">
             Contact :{" "}
             <a
-              href="mailto:blablahike07@gmail.com
+              href="mailto:blablahike07@gmail.com"
               className="text-primary hover:underline"
             >
               blablahike07@gmail.com
