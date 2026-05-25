@@ -70,10 +70,10 @@ function AboutPage() {
           <p className="mt-2">
             Contact :{" "}
             <a
-              href="mailto:admin@blablahike.eu"
+              href="mailto:blablahike07@gmail.com
               className="text-primary hover:underline"
             >
-              admin@blablahike.eu
+              blablahike07@gmail.com
             </a>
           </p>
         </Section>
