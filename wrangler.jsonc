@@ -3,12 +3,14 @@
   "name": "hike-together",
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
-  "main": "src/server.ts",
+  "main": "dist/server/server.js",
+
+  "no_bundle": true,
 
   "alias": {
     "#tanstack-router-entry": "./src/router.tsx",
     "#tanstack-start-entry": "./src/start.ts",
-    "tanstack-start-manifest:v": "./dist/server/assets/_tanstack-start-manifest_v-BuKoK0Mb.js"
+    "tanstack-start-manifest:v": "./src/_manifest-alias.js"
   },
 
   "vars": {
@@ -16,12 +18,7 @@
   },
 
   "observability": {
-    "logs": {
-      "enabled": true,
-      "invocation_logs": true
-    },
-    "traces": {
-      "enabled": false
-    }
+    "logs": { "enabled": true, "invocation_logs": true },
+    "traces": { "enabled": false }
   }
 }
