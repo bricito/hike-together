@@ -1,6 +1,6 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
-
+ 
 export default defineConfig({
   tanstackStart: {
     nitro: true, // ← active le plugin Cloudflare via TanStack/Nitro
