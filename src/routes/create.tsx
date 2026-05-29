@@ -125,6 +125,7 @@ function Create() {
             </Field>
             <Field label="Nombre de participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
+          <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} placeholder="Parking des Praz" className="h-12 rounded-2xl" /></Field>
           <Field label="Point de rendez-vous *">
   <Input
     required
@@ -138,42 +139,15 @@ function Create() {
   </p>
 </Field>
           <Field label="URL de l'image de couverture (optionnel)"><Input value={form.cover_image} onChange={(e) => set("cover_image", e.target.value)} placeholder="https://..." className="h-12 rounded-2xl" /></Field>
-        
-        <Field label="Lien de référence">
-  <Input
-    value={form.reference_link}
-    onChange={(e) => set("reference_link", e.target.value)}
-    placeholder="https://www.alltrails.com/trail/..."
-    className="h-12 rounded-2xl"
-  />
-
-  <p className="text-xs text-muted-foreground mt-1.5">
-    📎 Collez ici le lien de votre itinéraire depuis{" "}
-    <span className="font-medium text-foreground">AllTrails</span>,{" "}
-    <span className="font-medium text-foreground">Visorando</span>,{" "}
-    <span className="font-medium text-foreground">Komoot</span> ou toute autre
-    plateforme — les participants pourront consulter le tracé et les détails
-    complets.
-  </p>
-</Field>
-
-<Field label="Description">
-  <textarea
-    required
-    value={form.description}
-    onChange={(e) => set("description", e.target.value)}
-    rows={8}
-    placeholder={`Je propose une randonnée à XXX.
-
-Les frais comprennent l'essence et le péage.
-
-Je serai accompagné de mon chien / chat / poisson rouge.
-
-Pensez à prendre un pique-nique et suffisamment d'eau pour la rando.`}
-    className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
-  />
-</Field>
-
+          <Field label="Lien de référence">
+            <Input value={form.reference_link} onChange={(e) => set("reference_link", e.target.value)} placeholder="https://www.alltrails.com/trail/..." className="h-12 rounded-2xl" />
+            <p className="text-xs text-muted-foreground mt-1.5">
+              📎 Collez ici le lien de votre itinéraire depuis <span className="font-medium text-foreground">AllTrails</span>, <span className="font-medium text-foreground">Visorando</span>, <span className="font-medium text-foreground">Komoot</span> ou toute autre plateforme — les participants pourront consulter le tracé et les détails complets.
+            </p>
+          </Field>
+          <Field label="Description">
+            <textarea required value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Décrivez ce que les participants peuvent attendre..." className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
+          </Field>
           <Field label="Équipement nécessaire (séparé par des virgules)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Chaussures de rando, eau, lampe frontale" className="h-12 rounded-2xl" /></Field>
           <div className="grid grid-cols-[2fr_1fr] gap-3">
             <Field label="Prix par personne (optionnel)">
