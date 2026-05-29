@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
@@ -14,6 +14,7 @@ import type { HikeView } from "@/lib/hikes-api";
 import type { Difficulty } from "@/lib/hikes-data";
 import { fetchHikeRequests, respondToRequest, saveLiabilityAcceptance } from "@/lib/messages-api";
 import { useAuth } from "@/lib/auth-context";
+import { startCheckout } from "@/lib/stripe-client";
 
 const LIABILITY_TEXT = `En participant à une randonnée organisée via BlablaHike, vous reconnaissez et acceptez ce qui suit :
 
@@ -69,7 +70,17 @@ export const Route = createFileRoute("/hikes/$slug")({
   component: HikeDetail,
 });
 
-function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => void; onCancel: () => void; isPending: boolean }) {
+function LiabilityModal({
+  onConfirm,
+  onCancel,
+  isPending,
+  isPaid,
+}: {
+  onConfirm: () => void;
+  onCancel: () => void;
+  isPending: boolean;
+  isPaid?: boolean;
+}) {
   const [checked, setChecked] = useState(false);
   const [showText, setShowText] = useState(false);
   return (
@@ -116,7 +127,11 @@ function LiabilityModal({ onConfirm, onCancel, isPending }: { onConfirm: () => v
             Annuler
           </Button>
           <Button className="flex-1 rounded-2xl" disabled={!checked || isPending} onClick={onConfirm}>
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer ma demande"}
+            {isPending
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : isPaid
+                ? "Continuer vers le paiement"
+                : "Confirmer ma demande"}
           </Button>
         </div>
       </div>
@@ -248,19 +263,51 @@ function HikeDetail() {
   const [showEdit, setShowEdit] = useState(false);
 
   const participationKey = ["participation", hike.id, user?.id];
+
   const { data: participation } = useQuery({
     queryKey: participationKey,
     queryFn: () => fetchMyParticipation(hike.id, user!.id),
     enabled: !!user,
   });
 
+  // Retour depuis Stripe
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("payment") === "success") {
+      toast.success("Paiement confirmé ! Vous participez à la randonnée 🎉");
+      qc.invalidateQueries({ queryKey: participationKey });
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+    if (params.get("payment") === "cancelled") {
+      toast.error("Paiement annulé.");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
   const joinMut = useMutation({
     mutationFn: async () => {
       const { data: u } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
       if (u.user) await saveLiabilityAcceptance(u.user.id, hike.id);
+
+      // Randonnée payante → insérer participation en pending puis rediriger vers Stripe
+      if (hike.priceCents && hike.priceCents > 0 && user?.email) {
+        await requestToJoinHike(hike.id);
+        await startCheckout({
+          hikeId: hike.id,
+          hikeTitle: hike.title,
+          priceCents: hike.priceCents,
+          currency: hike.currency ?? "EUR",
+          userId: user.id,
+          userEmail: user.email,
+        });
+        return null; // page redirigée vers Stripe
+      }
+
+      // Randonnée gratuite → flow normal
       return requestToJoinHike(hike.id);
     },
     onSuccess: (data) => {
+      if (!data) return; // redirigé vers Stripe
       qc.setQueryData(participationKey, data);
       setShowLiability(false);
       toast.success("Demande envoyée ! L'organisateur va l'examiner.");
@@ -316,6 +363,7 @@ function HikeDetail() {
           onConfirm={() => joinMut.mutate()}
           onCancel={() => setShowLiability(false)}
           isPending={joinMut.isPending}
+          isPaid={!!(hike.priceCents && hike.priceCents > 0)}
         />
       )}
       {showEdit && (
@@ -457,11 +505,30 @@ function HikeDetail() {
             ) : participation?.status === "pending" ? (
               <>
                 <div className="mt-5 p-3 rounded-2xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm text-center font-medium flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Demande en attente
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  {participation.payment_status === "pending" && hike.priceCents && hike.priceCents > 0
+                    ? "En attente de paiement"
+                    : "Demande en attente"}
                 </div>
-                <Button variant="outline" className="w-full rounded-2xl mt-2" disabled={cancelMut.isPending} onClick={() => cancelMut.mutate()}>
-                  <X className="h-4 w-4" /> Annuler la demande
-                </Button>
+                {participation.payment_status === "pending" && hike.priceCents && hike.priceCents > 0 ? (
+                  <Button
+                    className="w-full rounded-2xl mt-2"
+                    onClick={() => startCheckout({
+                      hikeId: hike.id,
+                      hikeTitle: hike.title,
+                      priceCents: hike.priceCents!,
+                      currency: hike.currency ?? "EUR",
+                      userId: user.id,
+                      userEmail: user.email!,
+                    })}
+                  >
+                    Reprendre le paiement
+                  </Button>
+                ) : (
+                  <Button variant="outline" className="w-full rounded-2xl mt-2" disabled={cancelMut.isPending} onClick={() => cancelMut.mutate()}>
+                    <X className="h-4 w-4" /> Annuler la demande
+                  </Button>
+                )}
               </>
             ) : participation?.status === "accepted" ? (
               <>
@@ -479,8 +546,17 @@ function HikeDetail() {
                 Votre demande n'a pas été retenue cette fois.
               </div>
             ) : (
-              <Button size="lg" className="w-full rounded-2xl mt-5" disabled={hike.spotsLeft === 0} onClick={() => setShowLiability(true)}>
-                {hike.spotsLeft === 0 ? "Randonnée complète" : "Demander à rejoindre"}
+              <Button
+                size="lg"
+                className="w-full rounded-2xl mt-5"
+                disabled={hike.spotsLeft === 0}
+                onClick={() => setShowLiability(true)}
+              >
+                {hike.spotsLeft === 0
+                  ? "Randonnée complète"
+                  : hike.priceCents && hike.priceCents > 0
+                    ? `Rejoindre — ${(hike.priceCents / 100).toFixed(2)} ${hike.currency}`
+                    : "Demander à rejoindre"}
               </Button>
             )}
           </div>
