@@ -1,21 +1,27 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hike-together",
-
   "compatibility_date": "2025-09-24",
   "compatibility_flags": ["nodejs_compat"],
   "main": "src/server.ts",
-  "vars": {
-    "VITE_SUPABASE_URL": "https://zyxeupstiihvrzelbgwi.supabase.co",
-    "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5eGV1cHN0aWlodnJ6ZWxiZ3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjAzNzIsImV4cCI6MjA5MzczNjM3Mn0.MHgbyK3oO6z15eCfqX0Blhgm8DGi4TN60EaW8NCl-CY"
+
+  "alias": {
+    "#tanstack-router-entry": "./src/router.tsx",
+    "#tanstack-start-entry": "./src/client.tsx",
+    "tanstack-start-manifest:v": "./.tanstack/start/manifest.json"
   },
+
+  "vars": {
+    "PUBLIC_BASE_URL": "https://blablahike.eu"
+  },
+
   "observability": {
     "logs": {
       "enabled": true,
       "invocation_logs": true
     },
     "traces": {
-      "enabled": false 
+      "enabled": false
     }
   }
 }
