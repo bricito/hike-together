@@ -145,8 +145,21 @@ function Create() {
             </p>
           </Field>
           <Field label="Description">
-            <textarea required value={form.description} onChange={(e) => set("description", e.target.value)} rows={5} placeholder="Décrivez ce que les participants peuvent attendre..." className="w-full rounded-2xl border border-input bg-background p-3 text-sm" />
-          </Field>
+  <textarea
+    required
+    value={form.description}
+    onChange={(e) => set("description", e.target.value)}
+    rows={8}
+    placeholder={`Je propose une randonnée à XXX.
+
+Les frais comprennent l'essence et le péage.
+
+Je serai accompagné de mon chien / chat / poisson rouge.
+
+Pensez à prendre un pique-nique et suffisamment d'eau pour la rando.`}
+    className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
+  />
+</Field>
           <Field label="Équipement nécessaire (séparé par des virgules)"><Input value={form.equipment} onChange={(e) => set("equipment", e.target.value)} placeholder="Chaussures de rando, eau, lampe frontale" className="h-12 rounded-2xl" /></Field>
           <div className="grid grid-cols-[2fr_1fr] gap-3">
             <Field label="Prix par personne (optionnel)">
