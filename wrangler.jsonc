@@ -7,8 +7,8 @@
 
   "alias": {
     "#tanstack-router-entry": "./src/router.tsx",
-    "#tanstack-start-entry": "./src/client.tsx",
-    "tanstack-start-manifest:v": "./.tanstack/start/manifest.json"
+    "#tanstack-start-entry": "./src/start.ts",
+    "tanstack-start-manifest:v": "./dist/server/assets/_tanstack-start-manifest_v-BuKoK0Mb.js"
   },
 
   "vars": {
