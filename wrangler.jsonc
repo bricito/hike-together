@@ -1,10 +1,11 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "hike-together",
-  "main": "dist/server/server.js",  // ← était .output/server/index.mjs
+  "main": "dist/server/server.js",
   "compatibility_date": "2025-01-01",
+  "compatibility_flags": ["nodejs_compat"],  // ← ajouter cette ligne
   "assets": {
-    "directory": "dist/client"  // ← ajouter pour servir le frontend
+    "directory": "dist/client"
   },
   "vars": {
     "PUBLIC_BASE_URL": "https://blablahike.eu",
