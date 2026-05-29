@@ -1,22 +1,17 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-
   "name": "hike-together",
-
-  "main": ".output/server/index.mjs",
-
+  "main": "dist/server/server.js",  // ← était .output/server/index.mjs
   "compatibility_date": "2025-01-01",
-
+  "assets": {
+    "directory": "dist/client"  // ← ajouter pour servir le frontend
+  },
   "vars": {
     "PUBLIC_BASE_URL": "https://blablahike.eu",
-
     "VITE_SUPABASE_URL": "https://zyxeupstiihvrzelbgwi.supabase.co",
-
     "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5eGV1cHN0aWlodnJ6ZWxiZ3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjAzNzIsImV4cCI6MjA5MzczNjM3Mn0.MHgbyK3oO6z15eCfqX0Blhgm8DGi4TN60EaW8NCl-CY",
-
     "SUPABASE_URL": "https://zyxeupstiihvrzelbgwi.supabase.co"
   },
-
   "observability": {
     "logs": {
       "enabled": true,
