@@ -1,5 +1,6 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
   tanstackStart: {
@@ -10,6 +11,8 @@ export default defineConfig({
 
   vite: {
     plugins: [
+      cloudflare(),
+
       VitePWA({
         registerType: "autoUpdate",
 
