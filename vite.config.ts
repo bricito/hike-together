@@ -1,21 +1,18 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 import { VitePWA } from "vite-plugin-pwa";
-import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
   tanstackStart: {
+    nitro: true, // ← active le plugin Cloudflare via TanStack/Nitro
     server: {
       entry: "server",
     },
   },
-
   vite: {
     plugins: [
-      cloudflare(),
-
+      // cloudflare() retiré d'ici — géré par nitro: true
       VitePWA({
         registerType: "autoUpdate",
-
         manifest: {
           name: "Mon App",
           short_name: "MonApp",
@@ -24,7 +21,6 @@ export default defineConfig({
           background_color: "#000000",
           display: "standalone",
           start_url: "/",
-
           icons: [
             {
               src: "/icon-192.png",
