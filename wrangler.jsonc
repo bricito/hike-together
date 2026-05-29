@@ -1,20 +1,26 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
+
   "name": "hike-together",
-  "compatibility_date": "2025-09-24",
-  "compatibility_flags": ["nodejs_compat"],
-  "main": "dist/server/server.js",
-  "no_bundle": true,
+
+  "main": ".output/server/index.mjs",
+
+  "compatibility_date": "2025-01-01",
 
   "vars": {
     "PUBLIC_BASE_URL": "https://blablahike.eu",
+
     "VITE_SUPABASE_URL": "https://zyxeupstiihvrzelbgwi.supabase.co",
+
     "VITE_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5eGV1cHN0aWlodnJ6ZWxiZ3dpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgxNjAzNzIsImV4cCI6MjA5MzczNjM3Mn0.MHgbyK3oO6z15eCfqX0Blhgm8DGi4TN60EaW8NCl-CY",
+
     "SUPABASE_URL": "https://zyxeupstiihvrzelbgwi.supabase.co"
   },
 
   "observability": {
-    "logs": { "enabled": true, "invocation_logs": true },
-    "traces": { "enabled": false }
+    "logs": {
+      "enabled": true,
+      "invocation_logs": true
+    }
   }
 }
