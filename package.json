@@ -14,7 +14,7 @@
 
     "preview": "vite preview",
 
-    "deploy": "wrangler deploy",
+    "deploy": "vite build && npx wrangler deploy --no-bundle",
 
     "cf-typegen": "wrangler types",
 
