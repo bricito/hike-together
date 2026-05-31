@@ -45,7 +45,6 @@ export async function sendMessage(hikeId: string, content: string) {
   });
   if (error) throw error;
 
-  // Récupère le titre de la rando + tous les membres du groupe
   const [{ data: hike }, { data: participants }, { data: profile }] = await Promise.all([
     supabase.from("hikes").select("title, slug, organizer_id").eq("id", hikeId).single(),
     supabase.from("hike_participants").select("user_id").eq("hike_id", hikeId).eq("status", "accepted"),
@@ -54,7 +53,6 @@ export async function sendMessage(hikeId: string, content: string) {
 
   if (!hike) return;
 
-  // Tous les membres : organisateur + participants acceptés, sauf l'expéditeur
   const memberIds = new Set<string>();
   memberIds.add(hike.organizer_id);
   (participants ?? []).forEach((p: any) => memberIds.add(p.user_id));
@@ -67,13 +65,27 @@ export async function sendMessage(hikeId: string, content: string) {
       user_id: uid,
       type: "new_message",
       payload: {
-        hike_id:    hikeId,
+        hike_id: hikeId,
         hike_title: hike.title,
-        hike_slug:  hike.slug,
-        user_name:  profile?.full_name ?? "Quelqu'un",
-        sender_id:  u.user.id,
+        hike_slug: hike.slug,
+        user_name: profile?.full_name ?? "Quelqu'un",
+        sender_id: u.user.id,
       },
     })),
+  );
+
+  // Notification push FCM à tous les membres du groupe sauf l'expéditeur
+  await Promise.all(
+    Array.from(memberIds).map((uid) =>
+      supabase.functions.invoke("send-fcm-notification", {
+        body: {
+          user_id: uid,
+          title: `💬 ${profile?.full_name ?? "Quelqu'un"}`,
+          body: content.length > 60 ? content.slice(0, 60) + "…" : content,
+          url: `https://blablahike.eu/messages/${hikeId}`,
+        },
+      })
+    )
   );
 }
 
@@ -214,8 +226,6 @@ export async function markAllNotificationsRead(userId: string) {
   if (error) throw error;
 }
 
-import { sendPushNotification } from "./onesignal";
-
 export async function respondToRequest(participantId: string, status: "accepted" | "declined") {
   const { error } = await supabase
     .from("hike_participants")
@@ -234,21 +244,30 @@ export async function respondToRequest(participantId: string, status: "accepted"
 
   if (participant) {
     const hike = Array.isArray(participant.hike) ? participant.hike[0] : participant.hike;
-    const message = status === "accepted"
-      ? `✅ Votre demande pour "${hike?.title}" a été acceptée !`
-      : `❌ Votre demande pour "${hike?.title}" n'a pas été retenue.`;
 
-    await sendPushNotification({
-      userIds: [participant.user_id],
-      title: "BlablaHike",
-      message,
-      url: `https://www.blablahike.eu/hikes/${hike?.slug}`,
-    });
+    const notifTitle = status === "accepted"
+      ? "Demande acceptée ✅"
+      : "Demande refusée ❌";
+    const notifBody = status === "accepted"
+      ? `Votre demande pour "${hike?.title}" a été acceptée !`
+      : `Votre demande pour "${hike?.title}" n'a pas été retenue.`;
 
+    // Notification in-app
     await supabase.from("notifications").insert({
       user_id: participant.user_id,
       type: status === "accepted" ? "request_accepted" : "request_declined",
       payload: { hike_title: hike?.title, hike_slug: hike?.slug },
     });
+
+    // ✅ Notification push FCM au participant
+    const { error: fcmError } = await supabase.functions.invoke("send-fcm-notification", {
+      body: {
+        user_id: participant.user_id,
+        title: notifTitle,
+        body: notifBody,
+        url: `https://blablahike.eu/hikes/${hike?.slug}`,
+      },
+    });
+    if (fcmError) console.error("FCM error:", fcmError);
   }
 }
