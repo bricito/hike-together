@@ -8,7 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { HikeParticipants } from "@/components/HikeParticipants";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil, QrCode } from "lucide-react";
+import { Clock, TrendingUp, Users, MapPin, Calendar, Backpack, Loader2, Check, X, UserPlus, MessageCircle, AlertTriangle, Pencil, QrCode, LogOut } from "lucide-react";
 import { fetchHikeBySlug, fetchPublicHikes, fetchMyParticipation, requestToJoinHike, cancelJoinRequest, updateHike } from "@/lib/hikes-api";
 import type { HikeView } from "@/lib/hikes-api";
 import type { Difficulty } from "@/lib/hikes-data";
@@ -149,6 +149,59 @@ function LiabilityModal({
   );
 }
 
+// Modal de confirmation d'annulation
+function CancelParticipationModal({
+  onConfirm,
+  onClose,
+  isPending,
+  isPaid,
+  currency,
+}: {
+  onConfirm: () => void;
+  onClose: () => void;
+  isPending: boolean;
+  isPaid: boolean;
+  currency?: string;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+      <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-md w-full p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <span className="h-10 w-10 rounded-2xl bg-red-500/10 text-red-600 grid place-items-center">
+            <LogOut className="h-5 w-5" />
+          </span>
+          <h2 className="font-display text-xl">Annuler ma participation</h2>
+        </div>
+        <p className="text-sm text-muted-foreground mb-2">
+          Êtes-vous sûr de vouloir annuler votre participation à cette randonnée ?
+        </p>
+        {isPaid ? (
+          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-200 dark:border-emerald-900 p-3 mb-6 text-sm text-emerald-700 dark:text-emerald-400">
+            ✓ Votre paiement sera remboursé automatiquement sous 5 à 10 jours ouvrés sur votre moyen de paiement d'origine.
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground mb-6">
+            Cette action est irréversible.
+          </p>
+        )}
+        <div className="flex gap-3">
+          <Button variant="outline" className="flex-1 rounded-2xl" onClick={onClose} disabled={isPending}>
+            Garder ma place
+          </Button>
+          <Button
+            variant="destructive"
+            className="flex-1 rounded-2xl"
+            disabled={isPending}
+            onClick={onConfirm}
+          >
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmer l'annulation"}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function EditHikeModal({ hike, onClose, onSaved }: { hike: HikeView; onClose: () => void; onSaved: () => void }) {
   const startsAt = new Date(hike.starts_at);
   const dateStr = startsAt.toISOString().split("T")[0];
@@ -271,6 +324,7 @@ function HikeDetail() {
   const qc = useQueryClient();
   const [showLiability, setShowLiability] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [totalCents, setTotalCents] = useState<number | undefined>(undefined);
 
   const participationKey = ["participation", hike.id, user?.id];
@@ -292,7 +346,7 @@ function HikeDetail() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
-      toast.success("Paiement confirmé 🎉En attente de la validation par l'organisateur");
+      toast.success("Paiement confirmé ! Vous participez à la randonnée 🎉");
       qc.invalidateQueries({ queryKey: participationKey });
       window.history.replaceState({}, "", window.location.pathname);
     }
@@ -302,12 +356,14 @@ function HikeDetail() {
     }
   }, []);
 
+  // 24h avant la rando = bouton d'annulation masqué
+  const canCancelParticipation = new Date(hike.starts_at).getTime() - Date.now() > 24 * 60 * 60 * 1000;
+
   const joinMut = useMutation({
     mutationFn: async () => {
       const { data: u } = await (await import("@/integrations/supabase/client")).supabase.auth.getUser();
       if (u.user) await saveLiabilityAcceptance(u.user.id, hike.id);
 
-      // Randonnée payante → insérer participation en pending puis rediriger vers Stripe
       if (hike.priceCents && hike.priceCents > 0 && user?.email) {
         await requestToJoinHike(hike.id);
         await startCheckout({
@@ -319,14 +375,13 @@ function HikeDetail() {
           userId: user.id,
           userEmail: user.email,
         });
-        return null; // page redirigée vers Stripe
+        return null;
       }
 
-      // Randonnée gratuite → flow normal
       return requestToJoinHike(hike.id);
     },
     onSuccess: (data) => {
-      if (!data) return; // redirigé vers Stripe
+      if (!data) return;
       qc.setQueryData(participationKey, data);
       setShowLiability(false);
       toast.success("Demande envoyée ! L'organisateur va l'examiner.");
@@ -341,9 +396,51 @@ function HikeDetail() {
     mutationFn: () => cancelJoinRequest(participation!.id),
     onSuccess: () => {
       qc.setQueryData(participationKey, null);
-      toast.success("Demande annulée.");
+      setShowCancelModal(false);
+      toast.success(
+        participation?.payment_status === "paid"
+          ? "Participation annulée. Remboursement en cours (5-10 jours ouvrés)."
+          : "Participation annulée."
+      );
     },
-    onError: (e: any) => toast.error(e.message ?? "Impossible d'annuler la demande."),
+    onError: (e: any) => {
+      setShowCancelModal(false);
+      toast.error(e.message ?? "Impossible d'annuler la participation.");
+    },
+  });
+
+  // Annulation avec remboursement Stripe si paiement effectué
+  const cancelWithRefundMut = useMutation({
+    mutationFn: async () => {
+      if (participation?.payment_status === "paid" && participation?.stripe_payment_intent_id) {
+        // Appel à l'API de remboursement
+        const res = await fetch("/api/refund", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ participationId: participation.id }),
+        });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error ?? "Erreur lors du remboursement");
+        }
+      }
+      // Supprimer la participation dans Supabase
+      return cancelJoinRequest(participation!.id);
+    },
+    onSuccess: () => {
+      qc.setQueryData(participationKey, null);
+      qc.invalidateQueries({ queryKey: ["hikes"] });
+      setShowCancelModal(false);
+      toast.success(
+        participation?.payment_status === "paid"
+          ? "Participation annulée. Remboursement en cours (5-10 jours ouvrés)."
+          : "Participation annulée."
+      );
+    },
+    onError: (e: any) => {
+      setShowCancelModal(false);
+      toast.error(e.message ?? "Impossible d'annuler la participation.");
+    },
   });
 
   const isOrganizer = user?.id === hike.organizer.id;
@@ -384,6 +481,15 @@ function HikeDetail() {
           isPending={joinMut.isPending}
           isPaid={!!(hike.priceCents && hike.priceCents > 0)}
           totalCents={totalCents}
+          currency={hike.currency}
+        />
+      )}
+      {showCancelModal && (
+        <CancelParticipationModal
+          onConfirm={() => cancelWithRefundMut.mutate()}
+          onClose={() => setShowCancelModal(false)}
+          isPending={cancelWithRefundMut.isPending}
+          isPaid={participation?.payment_status === "paid"}
           currency={hike.currency}
         />
       )}
@@ -567,6 +673,20 @@ function HikeDetail() {
                     <MessageCircle className="h-4 w-4 mr-1" /> Chat — {hike.title}
                   </Link>
                 </Button>
+                {canCancelParticipation && (
+                  <Button
+                    variant="outline"
+                    className="w-full rounded-2xl mt-2 text-red-600 hover:bg-red-500/10 hover:text-red-600 border-red-200 dark:border-red-900"
+                    onClick={() => setShowCancelModal(true)}
+                  >
+                    <LogOut className="h-4 w-4 mr-1" /> Annuler ma participation
+                  </Button>
+                )}
+                {!canCancelParticipation && (
+                  <p className="text-[11px] text-muted-foreground text-center mt-2">
+                    Annulation impossible moins de 24h avant la randonnée.
+                  </p>
+                )}
               </>
             ) : participation?.status === "declined" ? (
               <div className="mt-5 p-3 rounded-2xl bg-secondary/60 text-sm text-center text-muted-foreground">
