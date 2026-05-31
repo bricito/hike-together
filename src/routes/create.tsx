@@ -126,7 +126,7 @@ function Create() {
             <Field label="Nombre de participants max"><Input type="number" min={2} value={form.max_participants} onChange={(e) => set("max_participants", Number(e.target.value))} className="h-12 rounded-2xl" /></Field>
           </div>
           <Field label="Point de rendez-vous"><Input value={form.meeting_point} onChange={(e) => set("meeting_point", e.target.value)} placeholder="Parking des Praz" className="h-12 rounded-2xl" /></Field>
-          <Field label="Point de rendez-vous *">
+          
   <Input
     required
     value={form.meeting_point}
