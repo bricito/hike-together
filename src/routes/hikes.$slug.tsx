@@ -292,7 +292,7 @@ function HikeDetail() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("payment") === "success") {
-      toast.success("Paiement confirmé ! Vous participez à la randonnée 🎉");
+      toast.success("Paiement confirmé 🎉En attente de la validation par l'organisateur");
       qc.invalidateQueries({ queryKey: participationKey });
       window.history.replaceState({}, "", window.location.pathname);
     }
