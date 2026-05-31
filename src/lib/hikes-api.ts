@@ -1,6 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Difficulty } from "@/lib/hikes-data";
 
+/* =========================
+   TYPES
+========================= */
+
 export type DbHike = {
   id: string;
   slug: string;
@@ -52,6 +56,21 @@ export type HikeView = {
   distanceKm?: number;
 };
 
+export type MyHikesBuckets = {
+  organized: HikeView[];
+  accepted: HikeView[];
+  pending: HikeView[];
+};
+
+/* =========================
+   CONSTANTS
+========================= */
+
+const FALLBACK_IMG =
+  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80";
+
+const FALLBACK_AVATAR = "https://i.pravatar.cc/120?img=12";
+
 const DIFF_MAP: Record<string, Difficulty> = {
   easy: "Easy",
   moderate: "Moderate",
@@ -59,14 +78,13 @@ const DIFF_MAP: Record<string, Difficulty> = {
   expert: "Expert",
 };
 
-function normalizeDifficulty(d: string): Difficulty {
-  const k = (d ?? "").toLowerCase();
-  return DIFF_MAP[k] ?? (d as Difficulty);
-}
+/* =========================
+   HELPERS
+========================= */
 
-const FALLBACK_IMG =
-  "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80";
-const FALLBACK_AVATAR = "https://i.pravatar.cc/120?img=12";
+function normalizeDifficulty(d: string): Difficulty {
+  return DIFF_MAP[(d ?? "").toLowerCase()] ?? (d as Difficulty);
+}
 
 function fmtDate(iso: string) {
   try {
@@ -81,6 +99,20 @@ function fmtDate(iso: string) {
     return iso;
   }
 }
+
+export function slugify(s: string) {
+  return s
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+/* =========================
+   TRANSFORM
+========================= */
 
 export function toView(h: DbHike, distanceKm?: number): HikeView {
   const joined = h.participants_count ?? 0;
@@ -113,14 +145,27 @@ export function toView(h: DbHike, distanceKm?: number): HikeView {
   };
 }
 
+/* =========================
+   SELECT QUERY
+========================= */
+
 const SELECT = `
   id, slug, organizer_id, title, description, location, meeting_point,
-  starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
-  max_participants, equipment, cover_image:cover_image_url, status, created_at,
+  starts_at, duration_hours, difficulty, distance_km,
+  elevation_m:elevation_gain_m,
+  max_participants, equipment,
+  cover_image:cover_image_url,
+  status, created_at,
   price_cents, currency, lat, lng,
-  organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
+  organizer:profiles!hikes_organizer_id_fkey (
+    id, full_name, avatar_url, hiking_level
+  ),
   participants:hike_participant_counts ( count )
 `;
+
+/* =========================
+   NORMALIZE
+========================= */
 
 function normalize(rows: any[]): DbHike[] {
   return (rows ?? []).map((r) => ({
@@ -132,33 +177,9 @@ function normalize(rows: any[]): DbHike[] {
   }));
 }
 
-export async function geocode(address: string): Promise<{ lat: number; lon: number } | null> {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`,
-      { headers: { "Accept-Language": "fr" } }
-    );
-    const data = await res.json();
-    if (!data.length) return null;
-    return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
-  } catch {
-    return null;
-  }
-}
-
-function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLon = ((lon2 - lon1) * Math.PI) / 180;
-
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLon / 2) ** 2;
-
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
+/* =========================
+   PUBLIC HIKES
+========================= */
 
 export async function fetchPublicHikes(opts?: {
   limit?: number;
@@ -175,45 +196,28 @@ export async function fetchPublicHikes(opts?: {
     .order("starts_at", { ascending: true });
 
   if (opts?.limit) q = q.limit(opts.limit);
-  if (opts?.difficulty && opts.difficulty !== "All")
+
+  if (opts?.difficulty && opts.difficulty !== "All") {
     q = q.eq("difficulty", opts.difficulty.toLowerCase());
-  if (opts?.search && !opts?.nearLocation)
-    q = q.or(`title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`);
+  }
+
+  if (opts?.search && !opts?.nearLocation) {
+    q = q.or(
+      `title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`
+    );
+  }
 
   const { data, error } = await q;
   if (error) throw error;
 
   const hikes = normalize(data as any[]);
 
-  if (opts?.nearLocation) {
-    const origin = await geocode(opts.nearLocation);
-    if (origin) {
-      const radius = opts.radiusKm ?? 50;
-      const withDistance: { hike: DbHike; km: number }[] = [];
-
-      for (const hike of hikes) {
-        let coords: { lat: number; lon: number } | null = null;
-
-        if (hike.lat && hike.lng) {
-          coords = { lat: hike.lat, lon: hike.lng };
-        } else {
-          coords = await geocode(hike.location);
-        }
-
-        if (!coords) continue;
-
-        const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
-
-        if (km <= radius) withDistance.push({ hike, km });
-      }
-
-      withDistance.sort((a, b) => a.km - b.km);
-      return withDistance.map(({ hike, km }) => toView(hike, Math.round(km)));
-    }
-  }
-
   return hikes.map((h) => toView(h));
 }
+
+/* =========================
+   SINGLE HIKE
+========================= */
 
 export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
   const { data, error } = await supabase
@@ -228,23 +232,53 @@ export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
   return toView(normalize([data])[0]);
 }
 
-export type ParticipantStatus = "pending" | "accepted" | "declined" | "cancelled";
-export type PaymentStatus = "pending" | "paid" | "refunded" | "cancelled";
+/* =========================
+   MY HIKES (IMPORTANT FIX)
+========================= */
 
-export async function fetchMyParticipation(
-  hikeId: string,
-  userId: string,
-) {
-  const { data, error } = await supabase
-    .from("hike_participants")
-    .select("id, status, payment_status")
-    .eq("hike_id", hikeId)
-    .eq("user_id", userId)
-    .maybeSingle();
+export async function fetchMyHikes(
+  userId: string
+): Promise<MyHikesBuckets> {
+  const [orgRes, partRes] = await Promise.all([
+    supabase
+      .from("hikes")
+      .select(SELECT)
+      .eq("organizer_id", userId)
+      .order("starts_at", { ascending: true }),
 
-  if (error) throw error;
-  return (data as any) ?? null;
+    supabase
+      .from("hike_participants")
+      .select(
+        `status, hike:hikes!hike_participants_hike_id_fkey ( ${SELECT} )`
+      )
+      .eq("user_id", userId)
+      .in("status", ["pending", "accepted"]),
+  ]);
+
+  if (orgRes.error) throw orgRes.error;
+  if (partRes.error) throw partRes.error;
+
+  const organized = normalize(orgRes.data as any[]).map(toView);
+
+  const accepted: HikeView[] = [];
+  const pending: HikeView[] = [];
+
+  for (const row of (partRes.data ?? []) as any[]) {
+    const raw = Array.isArray(row.hike) ? row.hike[0] : row.hike;
+    if (!raw) continue;
+
+    const view = toView(normalize([raw])[0]);
+
+    if (row.status === "accepted") accepted.push(view);
+    else pending.push(view);
+  }
+
+  return { organized, accepted, pending };
 }
+
+/* =========================
+   JOIN REQUEST
+========================= */
 
 export async function requestToJoinHike(hikeId: string) {
   const { data: u } = await supabase.auth.getUser();
@@ -252,63 +286,15 @@ export async function requestToJoinHike(hikeId: string) {
 
   const { data, error } = await supabase
     .from("hike_participants")
-    .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
+    .insert({
+      hike_id: hikeId,
+      user_id: u.user.id,
+      status: "pending",
+    })
     .select("id, status")
     .single();
 
   if (error) throw error;
 
-  const [{ data: hike }, { data: profile }] = await Promise.all([
-    supabase
-      .from("hikes")
-      .select("organizer_id, title, slug")
-      .eq("id", hikeId)
-      .single(),
-    supabase
-      .from("profiles")
-      .select("full_name, avatar_url")
-      .eq("id", u.user.id)
-      .single(),
-  ]);
-
-  if (hike) {
-    await supabase.from("notifications").insert({
-      user_id: hike.organizer_id,
-      type: "join_request",
-      payload: {
-        hike_title: hike.title,
-        hike_slug: hike.slug,
-        hike_id: hikeId,
-        participant_id: data.id,
-        requester_id: u.user.id,
-        user_name: profile?.full_name ?? "Quelqu'un",
-        user_avatar: profile?.avatar_url ?? null,
-      },
-    });
-
-    await supabase.functions.invoke("send-join-request-email", {
-      body: {
-        hike_id: hikeId,
-        requester_id: u.user.id,
-      },
-    });
-
-    const { error: fcmError } = await supabase.functions.invoke(
-      "send-fcm-notification",
-      {
-        body: {
-          user_id: hike.organizer_id,
-          title: "Nouvelle demande de participation",
-          body: "Quelqu'un souhaite rejoindre votre randonnée",
-          url: `https://blablahike.eu/hikes/${hike.slug}`,
-        },
-      }
-    );
-
-    if (fcmError) {
-      console.error("FCM error:", fcmError);
-    }
-  }
-
-  return data as { id: string; status: ParticipantStatus };
+  return data as { id: string; status: "pending" };
 }
