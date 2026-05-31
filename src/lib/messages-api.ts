@@ -58,9 +58,7 @@ export async function sendMessage(hikeId: string, content: string) {
   (participants ?? []).forEach((p: any) => memberIds.add(p.user_id));
   memberIds.delete(u.user.id);
 
-  // ✅ Toast de debug visible sur téléphone
-  const { toast } = await import("sonner");
-  toast.info(`FCM: ${memberIds.size} destinataire(s) → ${Array.from(memberIds).join(", ").slice(0, 30)}`);
+  if (memberIds.size === 0) return;
 
   await supabase.from("notifications").insert(
     Array.from(memberIds).map((uid) => ({
@@ -76,34 +74,6 @@ export async function sendMessage(hikeId: string, content: string) {
     })),
   );
 
-  const results = await Promise.all(
-    Array.from(memberIds).map(async (uid) => {
-      const { data, error } = await supabase.functions.invoke("send-fcm-notification", {
-        body: {
-          user_id: uid,
-          title: `💬 ${profile?.full_name ?? "Quelqu'un"}`,
-          body: content.length > 60 ? content.slice(0, 60) + "…" : content,
-          url: `https://blablahike.eu/messages/${hikeId}`,
-        },
-      });
-      // ✅ Toast du résultat visible sur téléphone
-      toast.info(`FCM uid=${uid.slice(0, 8)} → ${error ? "❌ " + JSON.stringify(error) : "✅ " + JSON.stringify(data)}`);
-      return { data, error };
-
-      const [{ data: hike }, { data: participants }, { data: profile }] = await Promise.all([
-  supabase.from("hikes").select("title, slug, organizer_id").eq("id", hikeId).single(),
-  supabase.from("hike_participants").select("user_id").eq("hike_id", hikeId).eq("status", "accepted"),
-  supabase.from("profiles").select("full_name").eq("id", u.user.id).single(),
-]);
-
-// ✅ Toast debug
-const { toast } = await import("sonner");
-toast.info(`hike: ${hike?.organizer_id?.slice(0,8) ?? "null"} | participants: ${participants?.length ?? 0} | me: ${u.user.id.slice(0,8)}`);
-      
-    })
-  );
-}
-
   // Notification push FCM à tous les membres du groupe sauf l'expéditeur
   await Promise.all(
     Array.from(memberIds).map((uid) =>
@@ -117,7 +87,7 @@ toast.info(`hike: ${hike?.organizer_id?.slice(0,8) ?? "null"} | participants: ${
       })
     )
   );
-
+}
 
 export async function fetchMyConversations(userId: string): Promise<Conversation[]> {
   const { data: organized, error: e1 } = await supabase
