@@ -62,7 +62,11 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 
 serve(async (req) => {
   try {
-    const { user_id, title, body, url } = await req.json();
+    const text = await req.text();
+    if (!text) {
+      return new Response(JSON.stringify({ error: "Body vide" }), { status: 400 });
+    }
+    const { user_id, title, body, url } = JSON.parse(text);
 
     // Récupère les tokens FCM de l'utilisateur
     const { data: tokens, error } = await supabase
