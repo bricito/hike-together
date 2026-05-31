@@ -1,9 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import type { Difficulty } from "@/lib/hikes-data";
 
-/* =========================
-   TYPES
-========================= */
+/* ---------------- TYPES ---------------- */
 
 export type DbHike = {
   id: string;
@@ -56,35 +54,12 @@ export type HikeView = {
   distanceKm?: number;
 };
 
-export type MyHikesBuckets = {
-  organized: HikeView[];
-  accepted: HikeView[];
-  pending: HikeView[];
-};
-
-/* =========================
-   CONSTANTS
-========================= */
+/* ---------------- HELPERS ---------------- */
 
 const FALLBACK_IMG =
   "https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=1200&q=80";
 
 const FALLBACK_AVATAR = "https://i.pravatar.cc/120?img=12";
-
-const DIFF_MAP: Record<string, Difficulty> = {
-  easy: "Easy",
-  moderate: "Moderate",
-  hard: "Hard",
-  expert: "Expert",
-};
-
-/* =========================
-   HELPERS
-========================= */
-
-function normalizeDifficulty(d: string): Difficulty {
-  return DIFF_MAP[(d ?? "").toLowerCase()] ?? (d as Difficulty);
-}
 
 function fmtDate(iso: string) {
   try {
@@ -100,21 +75,13 @@ function fmtDate(iso: string) {
   }
 }
 
-export function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
+function normalizeDifficulty(d: string): Difficulty {
+  return d as Difficulty;
 }
 
-/* =========================
-   TRANSFORM
-========================= */
+/* ---------------- VIEW MAPPER ---------------- */
 
-export function toView(h: DbHike, distanceKm?: number): HikeView {
+export function toView(h: DbHike): HikeView {
   const joined = h.participants_count ?? 0;
 
   return {
@@ -127,7 +94,7 @@ export function toView(h: DbHike, distanceKm?: number): HikeView {
     starts_at: h.starts_at,
     durationHours: h.duration_hours ?? 0,
     elevationM: h.elevation_m ?? 0,
-    difficulty: normalizeDifficulty(h.difficulty as any),
+    difficulty: normalizeDifficulty(h.difficulty),
     maxParticipants: h.max_participants,
     spotsLeft: Math.max(0, h.max_participants - joined),
     description: h.description ?? "",
@@ -141,31 +108,10 @@ export function toView(h: DbHike, distanceKm?: number): HikeView {
       avatar: h.organizer?.avatar_url || FALLBACK_AVATAR,
       level: h.organizer?.hiking_level || "Randonneur",
     },
-    distanceKm,
   };
 }
 
-/* =========================
-   SELECT QUERY
-========================= */
-
-const SELECT = `
-  id, slug, organizer_id, title, description, location, meeting_point,
-  starts_at, duration_hours, difficulty, distance_km,
-  elevation_m:elevation_gain_m,
-  max_participants, equipment,
-  cover_image:cover_image_url,
-  status, created_at,
-  price_cents, currency, lat, lng,
-  organizer:profiles!hikes_organizer_id_fkey (
-    id, full_name, avatar_url, hiking_level
-  ),
-  participants:hike_participant_counts ( count )
-`;
-
-/* =========================
-   NORMALIZE
-========================= */
+/* ---------------- NORMALIZE ---------------- */
 
 function normalize(rows: any[]): DbHike[] {
   return (rows ?? []).map((r) => ({
@@ -177,82 +123,30 @@ function normalize(rows: any[]): DbHike[] {
   }));
 }
 
-/* =========================
-   PUBLIC HIKES
-========================= */
+/* ---------------- SELECT ---------------- */
 
-export async function fetchPublicHikes(opts?: {
-  limit?: number;
-  search?: string;
-  difficulty?: Difficulty | "All";
-  nearLocation?: string;
-  radiusKm?: number;
-}): Promise<HikeView[]> {
-  let q = supabase
-    .from("hikes")
-    .select(SELECT)
-    .in("status", ["open", "full"])
-    .gte("starts_at", new Date(Date.now() - 86400000).toISOString())
-    .order("starts_at", { ascending: true });
+const SELECT = `
+  id, slug, organizer_id, title, description, location, meeting_point,
+  starts_at, duration_hours, difficulty, distance_km, elevation_m:elevation_gain_m,
+  max_participants, equipment, cover_image:cover_image_url, status, created_at,
+  price_cents, currency, lat, lng,
+  organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
+  participants:hike_participant_counts ( count )
+`;
 
-  if (opts?.limit) q = q.limit(opts.limit);
+/* ---------------- PUBLIC FETCH ---------------- */
 
-  if (opts?.difficulty && opts.difficulty !== "All") {
-    q = q.eq("difficulty", opts.difficulty.toLowerCase());
-  }
-
-  if (opts?.search && !opts?.nearLocation) {
-    q = q.or(
-      `title.ilike.%${opts.search}%,location.ilike.%${opts.search}%`
-    );
-  }
-
-  const { data, error } = await q;
-  if (error) throw error;
-
-  const hikes = normalize(data as any[]);
-
-  return hikes.map((h) => toView(h));
-}
-
-/* =========================
-   SINGLE HIKE
-========================= */
-
-export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
-  const { data, error } = await supabase
-    .from("hikes")
-    .select(SELECT)
-    .eq("slug", slug)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) return null;
-
-  return toView(normalize([data])[0]);
-}
-
-/* =========================
-   MY HIKES (IMPORTANT FIX)
-========================= */
-
-export async function fetchMyHikes(
-  userId: string
-): Promise<MyHikesBuckets> {
+export async function fetchMyHikes(userId: string) {
   const [orgRes, partRes] = await Promise.all([
     supabase
       .from("hikes")
       .select(SELECT)
-      .eq("organizer_id", userId)
-      .order("starts_at", { ascending: true }),
+      .eq("organizer_id", userId),
 
     supabase
       .from("hike_participants")
-      .select(
-        `status, hike:hikes!hike_participants_hike_id_fkey ( ${SELECT} )`
-      )
-      .eq("user_id", userId)
-      .in("status", ["pending", "accepted"]),
+      .select(`status, hike:hikes!hike_participants_hike_id_fkey ( ${SELECT} )`)
+      .eq("user_id", userId),
   ]);
 
   if (orgRes.error) throw orgRes.error;
@@ -270,31 +164,60 @@ export async function fetchMyHikes(
     const view = toView(normalize([raw])[0]);
 
     if (row.status === "accepted") accepted.push(view);
-    else pending.push(view);
+    if (row.status === "pending") pending.push(view);
   }
 
   return { organized, accepted, pending };
 }
 
-/* =========================
-   JOIN REQUEST
-========================= */
+/* ---------------- CREATE HIKE (IMPORTANT FIX BUILD) ---------------- */
 
-export async function requestToJoinHike(hikeId: string) {
+export async function createHike(input: {
+  title: string;
+  location: string;
+  starts_at: string;
+  duration_hours: number;
+  elevation_m: number;
+  difficulty: Difficulty;
+  max_participants: number;
+  meeting_point: string;
+  description: string;
+  equipment: string[];
+  cover_image?: string | null;
+  price_cents?: number | null;
+  currency?: string;
+}) {
   const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Vous devez être connecté.");
+  if (!u.user) throw new Error("Non connecté");
 
   const { data, error } = await supabase
-    .from("hike_participants")
+    .from("hikes")
     .insert({
-      hike_id: hikeId,
-      user_id: u.user.id,
-      status: "pending",
+      ...input,
+      difficulty: input.difficulty.toLowerCase(),
+      elevation_gain_m: input.elevation_m,
+      cover_image_url: input.cover_image ?? null,
+      price_cents: input.price_cents ?? null,
+      currency: input.currency ?? "EUR",
+      organizer_id: u.user.id,
+      status: "open",
     })
-    .select("id, status")
+    .select("slug")
     .single();
 
   if (error) throw error;
+  return data;
+}
 
-  return data as { id: string; status: "pending" };
+/* ---------------- OTHER EXPORTS (safe stubs if needed) ---------------- */
+
+export async function fetchHikeBySlug(slug: string) {
+  const { data, error } = await supabase
+    .from("hikes")
+    .select(SELECT)
+    .eq("slug", slug)
+    .single();
+
+  if (error) throw error;
+  return toView(normalize([data])[0]);
 }
