@@ -102,7 +102,6 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
     // On ajoute la commission BlablaHike (10%) et les frais Stripe (0.25€ + 1.5%)
     // Total = (priceCents + 25) / (1 - 0.10 - 0.015)
     //       = (priceCents + 25) / 0.885
-    // Arrondi au centime supérieur
     const totalCents = Math.ceil((body.priceCents + 25) / 0.885);
 
     const { createClient } = await import("@supabase/supabase-js");
@@ -239,6 +238,71 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
   }
 }
 
+async function handleRefund(request: Request, env: Record<string, string>): Promise<Response> {
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { participationId: string };
+
+    const { createClient } = await import("@supabase/supabase-js");
+    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+
+    // Récupérer la participation et le payment_intent
+    const { data, error } = await supabase
+      .from("hike_participants")
+      .select("stripe_payment_intent_id, payment_status, user_id")
+      .eq("id", body.participationId)
+      .single();
+
+    if (error || !data) {
+      return Response.json({ error: "Participation introuvable" }, { status: 404 });
+    }
+
+    if (data.payment_status !== "paid") {
+      return Response.json({ error: "Aucun paiement à rembourser" }, { status: 400 });
+    }
+
+    if (!data.stripe_payment_intent_id) {
+      return Response.json({ error: "Payment intent manquant" }, { status: 400 });
+    }
+
+    // Déclencher le remboursement Stripe
+    const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        payment_intent: data.stripe_payment_intent_id,
+      }),
+    });
+
+    const refund = await refundRes.json() as { id: string; error?: { message: string } };
+
+    if (!refundRes.ok) {
+      return Response.json({ error: refund.error?.message ?? "Erreur Stripe remboursement" }, { status: 500 });
+    }
+
+    // Mettre à jour la participation en base
+    await supabase
+      .from("hike_participants")
+      .update({
+        payment_status: "refunded",
+        status: "cancelled",
+      })
+      .eq("id", body.participationId);
+
+    return Response.json({ ok: true, refundId: refund.id });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    console.error("Refund error:", message);
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 
 export default {
@@ -252,6 +316,9 @@ export default {
     }
     if (url.pathname === "/api/stripe-webhook") {
       return handleStripeWebhook(request, e);
+    }
+    if (url.pathname === "/api/refund") {
+      return handleRefund(request, e);
     }
 
     // Fichiers statiques
