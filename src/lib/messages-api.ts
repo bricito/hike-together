@@ -106,7 +106,7 @@ export async function sendMessage(hikeId: string, content: string) {
       })
     )
   );
-}
+
 
 export async function fetchMyConversations(userId: string): Promise<Conversation[]> {
   const { data: organized, error: e1 } = await supabase
