@@ -75,11 +75,15 @@ function LiabilityModal({
   onCancel,
   isPending,
   isPaid,
+  totalCents,
+  currency,
 }: {
   onConfirm: () => void;
   onCancel: () => void;
   isPending: boolean;
   isPaid?: boolean;
+  totalCents?: number;
+  currency?: string;
 }) {
   const [checked, setChecked] = useState(false);
   const [showText, setShowText] = useState(false);
@@ -122,6 +126,12 @@ function LiabilityModal({
           En cochant cette case, votre acceptation sera horodatée et conservée. Consultez notre{" "}
           <Link to="/safety" className="text-primary hover:underline">page Sécurité</Link>.
         </p>
+        {isPaid && totalCents && (
+          <div className="rounded-2xl bg-secondary/50 border border-border p-3 mb-4 text-sm text-muted-foreground">
+            <p>Montant total à régler : <span className="font-semibold text-foreground">{(totalCents / 100).toFixed(2)} {currency ?? "EUR"}</span></p>
+            <p className="text-xs mt-1">Frais de service BlablaHike + frais Stripe inclus.</p>
+          </div>
+        )}
         <div className="flex gap-3">
           <Button variant="outline" className="flex-1 rounded-2xl" onClick={onCancel} disabled={isPending}>
             Annuler
@@ -130,7 +140,7 @@ function LiabilityModal({
             {isPending
               ? <Loader2 className="h-4 w-4 animate-spin" />
               : isPaid
-                ? "Continuer vers le paiement"
+                ? `Payer ${totalCents ? (totalCents / 100).toFixed(2) + " " + (currency ?? "EUR") : ""}`
                 : "Confirmer ma demande"}
           </Button>
         </div>
@@ -261,6 +271,7 @@ function HikeDetail() {
   const qc = useQueryClient();
   const [showLiability, setShowLiability] = useState(false);
   const [showEdit, setShowEdit] = useState(false);
+  const [totalCents, setTotalCents] = useState<number | undefined>(undefined);
 
   const participationKey = ["participation", hike.id, user?.id];
 
@@ -269,6 +280,13 @@ function HikeDetail() {
     queryFn: () => fetchMyParticipation(hike.id, user!.id),
     enabled: !!user,
   });
+
+  // Calcul préalable du montant total (commission + frais Stripe)
+  useEffect(() => {
+    if (hike.priceCents && hike.priceCents > 0) {
+      setTotalCents(Math.ceil((hike.priceCents + 25) / 0.885));
+    }
+  }, [hike.priceCents]);
 
   // Retour depuis Stripe
   useEffect(() => {
@@ -294,6 +312,7 @@ function HikeDetail() {
         await requestToJoinHike(hike.id);
         await startCheckout({
           hikeId: hike.id,
+          hikeSlug: hike.slug,
           hikeTitle: hike.title,
           priceCents: hike.priceCents,
           currency: hike.currency ?? "EUR",
@@ -364,6 +383,8 @@ function HikeDetail() {
           onCancel={() => setShowLiability(false)}
           isPending={joinMut.isPending}
           isPaid={!!(hike.priceCents && hike.priceCents > 0)}
+          totalCents={totalCents}
+          currency={hike.currency}
         />
       )}
       {showEdit && (
@@ -474,9 +495,14 @@ function HikeDetail() {
             <p className="font-display text-2xl mt-1">{hike.spotsLeft} places restantes</p>
             <p className="text-xs text-muted-foreground mt-1">
               {hike.priceCents != null && hike.priceCents > 0
-                ? `${(hike.priceCents / 100).toFixed(2)} ${hike.currency} par personne · Organisé par la communauté`
+                ? `${(hike.priceCents / 100).toFixed(2)} ${hike.currency} demandés par l'organisateur`
                 : "Gratuit · Organisé par la communauté"}
             </p>
+            {hike.priceCents != null && hike.priceCents > 0 && totalCents && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Total facturé : <span className="font-medium text-foreground">{(totalCents / 100).toFixed(2)} {hike.currency}</span> · frais de service inclus
+              </p>
+            )}
 
             {isOrganizer ? (
               <div className="mt-5 space-y-2">
@@ -515,6 +541,7 @@ function HikeDetail() {
                     className="w-full rounded-2xl mt-2"
                     onClick={() => startCheckout({
                       hikeId: hike.id,
+                      hikeSlug: hike.slug,
                       hikeTitle: hike.title,
                       priceCents: hike.priceCents!,
                       currency: hike.currency ?? "EUR",
@@ -554,8 +581,8 @@ function HikeDetail() {
               >
                 {hike.spotsLeft === 0
                   ? "Randonnée complète"
-                  : hike.priceCents && hike.priceCents > 0
-                    ? `Rejoindre — ${(hike.priceCents / 100).toFixed(2)} ${hike.currency}`
+                  : hike.priceCents && hike.priceCents > 0 && totalCents
+                    ? `Rejoindre — ${(totalCents / 100).toFixed(2)} ${hike.currency}`
                     : "Demander à rejoindre"}
               </Button>
             )}
