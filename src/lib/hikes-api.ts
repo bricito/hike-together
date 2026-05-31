@@ -58,6 +58,7 @@ const DIFF_MAP: Record<string, Difficulty> = {
   hard: "Hard",
   expert: "Expert",
 };
+
 function normalizeDifficulty(d: string): Difficulty {
   const k = (d ?? "").toLowerCase();
   return DIFF_MAP[k] ?? (d as Difficulty);
@@ -83,6 +84,7 @@ function fmtDate(iso: string) {
 
 export function toView(h: DbHike, distanceKm?: number): HikeView {
   const joined = h.participants_count ?? 0;
+
   return {
     id: h.id,
     slug: h.slug,
@@ -148,11 +150,13 @@ function haversine(lat1: number, lon1: number, lat2: number, lon2: number): numb
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
   const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos((lat1 * Math.PI) / 180) *
-    Math.cos((lat2 * Math.PI) / 180) *
-    Math.sin(dLon / 2) ** 2;
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
@@ -186,17 +190,23 @@ export async function fetchPublicHikes(opts?: {
     if (origin) {
       const radius = opts.radiusKm ?? 50;
       const withDistance: { hike: DbHike; km: number }[] = [];
+
       for (const hike of hikes) {
         let coords: { lat: number; lon: number } | null = null;
+
         if (hike.lat && hike.lng) {
           coords = { lat: hike.lat, lon: hike.lng };
         } else {
           coords = await geocode(hike.location);
         }
+
         if (!coords) continue;
+
         const km = haversine(origin.lat, origin.lon, coords.lat, coords.lon);
+
         if (km <= radius) withDistance.push({ hike, km });
       }
+
       withDistance.sort((a, b) => a.km - b.km);
       return withDistance.map(({ hike, km }) => toView(hike, Math.round(km)));
     }
@@ -211,8 +221,10 @@ export async function fetchHikeBySlug(slug: string): Promise<HikeView | null> {
     .select(SELECT)
     .eq("slug", slug)
     .maybeSingle();
+
   if (error) throw error;
   if (!data) return null;
+
   return toView(normalize([data])[0]);
 }
 
@@ -222,13 +234,14 @@ export type PaymentStatus = "pending" | "paid" | "refunded" | "cancelled";
 export async function fetchMyParticipation(
   hikeId: string,
   userId: string,
-): Promise<{ id: string; status: ParticipantStatus; payment_status: PaymentStatus | null } | null> {
+) {
   const { data, error } = await supabase
     .from("hike_participants")
     .select("id, status, payment_status")
     .eq("hike_id", hikeId)
     .eq("user_id", userId)
     .maybeSingle();
+
   if (error) throw error;
   return (data as any) ?? null;
 }
@@ -242,6 +255,7 @@ export async function requestToJoinHike(hikeId: string) {
     .insert({ hike_id: hikeId, user_id: u.user.id, status: "pending" })
     .select("id, status")
     .single();
+
   if (error) throw error;
 
   const [{ data: hike }, { data: profile }] = await Promise.all([
@@ -272,164 +286,29 @@ export async function requestToJoinHike(hikeId: string) {
       },
     });
 
-    const { error: mailError } = await supabase.functions.invoke(
-      "send-join-request-email",
+    await supabase.functions.invoke("send-join-request-email", {
+      body: {
+        hike_id: hikeId,
+        requester_id: u.user.id,
+      },
+    });
+
+    const { error: fcmError } = await supabase.functions.invoke(
+      "send-fcm-notification",
       {
         body: {
-          hike_id: hikeId,
-          requester_id: u.user.id,
+          user_id: hike.organizer_id,
+          title: "Nouvelle demande de participation",
+          body: "Quelqu'un souhaite rejoindre votre randonnée",
+          url: `https://blablahike.eu/hikes/${hike.slug}`,
         },
       }
     );
 
-    if (mailError) {
-      console.error(mailError);
+    if (fcmError) {
+      console.error("FCM error:", fcmError);
     }
   }
 
   return data as { id: string; status: ParticipantStatus };
-}
-
-export async function cancelJoinRequest(participantId: string) {
-  const { error } = await supabase
-    .from("hike_participants")
-    .delete()
-    .eq("id", participantId);
-  if (error) throw error;
-}
-
-export type MyHikesBuckets = {
-  organized: HikeView[];
-  accepted: HikeView[];
-  pending: HikeView[];
-};
-
-export async function fetchMyHikes(userId: string): Promise<MyHikesBuckets> {
-  const [orgRes, partRes] = await Promise.all([
-    supabase.from("hikes").select(SELECT).eq("organizer_id", userId).order("starts_at", { ascending: true }),
-    supabase
-      .from("hike_participants")
-      .select(`status, hike:hikes!hike_participants_hike_id_fkey ( ${SELECT} )`)
-      .eq("user_id", userId)
-      .in("status", ["pending", "accepted"]),
-  ]);
-  if (orgRes.error) throw orgRes.error;
-  if (partRes.error) throw partRes.error;
-
-  const organized = normalize(orgRes.data as any[]).map((h) => toView(h));
-
-  const accepted: HikeView[] = [];
-  const pending: HikeView[] = [];
-  for (const row of (partRes.data ?? []) as any[]) {
-    const raw = Array.isArray(row.hike) ? row.hike[0] : row.hike;
-    if (!raw) continue;
-    const view = toView(normalize([raw])[0]);
-    if (row.status === "accepted") accepted.push(view);
-    else if (row.status === "pending") pending.push(view);
-  }
-  const sortByDate = (a: HikeView, b: HikeView) => a.starts_at.localeCompare(b.starts_at);
-  accepted.sort(sortByDate);
-  pending.sort(sortByDate);
-  return { organized, accepted, pending };
-}
-
-export function slugify(s: string) {
-  return s
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 60);
-}
-
-export async function createHike(input: {
-  title: string;
-  location: string;
-  starts_at: string;
-  duration_hours: number;
-  elevation_m: number;
-  difficulty: Difficulty;
-  max_participants: number;
-  meeting_point: string;
-  description: string;
-  equipment: string[];
-  cover_image?: string | null;
-  price_cents?: number | null;
-  currency?: string;
-}) {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Vous devez être connecté.");
-  const coords = await geocode(input.location);
-  const baseSlug = slugify(input.title) || "hike";
-  const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 7)}`;
-  const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
-  const { data, error } = await supabase
-    .from("hikes")
-    .insert({
-      ...rest,
-      difficulty: difficulty.toLowerCase(),
-      elevation_gain_m: elevation_m,
-      cover_image_url: cover_image ?? null,
-      price_cents: price_cents ?? null,
-      currency: currency ?? "EUR",
-      slug,
-      organizer_id: u.user.id,
-      status: "open",
-      lat: coords?.lat ?? null,
-      lng: coords?.lon ?? null,
-    })
-    .select("slug")
-    .single();
-  if (error) throw error;
-  return data;
-}
-
-export async function updateHike(
-  hikeId: string,
-  input: {
-    title: string;
-    location: string;
-    starts_at: string;
-    duration_hours: number;
-    elevation_m: number;
-    difficulty: Difficulty;
-    max_participants: number;
-    meeting_point: string;
-    description: string;
-    equipment: string[];
-    cover_image?: string | null;
-    price_cents?: number | null;
-    currency?: string;
-  }
-) {
-  const { data: u } = await supabase.auth.getUser();
-  if (!u.user) throw new Error("Vous devez être connecté.");
-
-  const { data: existing } = await supabase
-    .from("hikes")
-    .select("organizer_id, slug")
-    .eq("id", hikeId)
-    .single();
-  if (!existing || existing.organizer_id !== u.user.id)
-    throw new Error("Vous n'êtes pas autorisé à modifier cette randonnée.");
-
-  const coords = await geocode(input.location);
-
-  const { elevation_m, cover_image, price_cents, currency, difficulty, ...rest } = input;
-  const { error } = await supabase
-    .from("hikes")
-    .update({
-      ...rest,
-      difficulty: difficulty.toLowerCase(),
-      elevation_gain_m: elevation_m,
-      cover_image_url: cover_image ?? null,
-      price_cents: price_cents ?? null,
-      currency: currency ?? "EUR",
-      lat: coords?.lat ?? null,
-      lng: coords?.lon ?? null,
-    })
-    .eq("id", hikeId);
-  if (error) throw error;
-  return existing.slug;
 }
