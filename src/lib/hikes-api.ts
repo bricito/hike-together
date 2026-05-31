@@ -117,7 +117,7 @@ const SELECT = `
   max_participants, equipment, cover_image:cover_image_url, status, created_at,
   price_cents, currency, lat, lng,
   organizer:profiles!hikes_organizer_id_fkey ( id, full_name, avatar_url, hiking_level ),
-  participants:hike_participants ( count )
+  participants:hike_participants!inner ( count )
 `;
 
 function normalize(rows: any[]): DbHike[] {
