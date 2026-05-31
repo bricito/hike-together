@@ -61,12 +61,31 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 }
 
 serve(async (req) => {
+  // ✅ Gérer les requêtes OPTIONS (CORS preflight)
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+      },
+    });
+  }
+
   try {
     const text = await req.text();
-    if (!text) {
+    console.log("Body reçu:", text); // ← log pour voir ce qui arrive
+    
+    if (!text || text.trim() === "") {
       return new Response(JSON.stringify({ error: "Body vide" }), { status: 400 });
     }
+
     const { user_id, title, body, url } = JSON.parse(text);
+    
+    if (!user_id) {
+      return new Response(JSON.stringify({ error: "user_id manquant" }), { status: 400 });
+    }
+
+ 
 
     // Récupère les tokens FCM de l'utilisateur
     const { data: tokens, error } = await supabase
