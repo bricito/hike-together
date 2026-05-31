@@ -58,7 +58,9 @@ export async function sendMessage(hikeId: string, content: string) {
   (participants ?? []).forEach((p: any) => memberIds.add(p.user_id));
   memberIds.delete(u.user.id);
 
-  if (memberIds.size === 0) return;
+  // ✅ Toast de debug visible sur téléphone
+  const { toast } = await import("sonner");
+  toast.info(`FCM: ${memberIds.size} destinataire(s) → ${Array.from(memberIds).join(", ").slice(0, 30)}`);
 
   await supabase.from("notifications").insert(
     Array.from(memberIds).map((uid) => ({
@@ -73,6 +75,23 @@ export async function sendMessage(hikeId: string, content: string) {
       },
     })),
   );
+
+  const results = await Promise.all(
+    Array.from(memberIds).map(async (uid) => {
+      const { data, error } = await supabase.functions.invoke("send-fcm-notification", {
+        body: {
+          user_id: uid,
+          title: `💬 ${profile?.full_name ?? "Quelqu'un"}`,
+          body: content.length > 60 ? content.slice(0, 60) + "…" : content,
+          url: `https://blablahike.eu/messages/${hikeId}`,
+        },
+      });
+      // ✅ Toast du résultat visible sur téléphone
+      toast.info(`FCM uid=${uid.slice(0, 8)} → ${error ? "❌ " + JSON.stringify(error) : "✅ " + JSON.stringify(data)}`);
+      return { data, error };
+    })
+  );
+}
 
   // Notification push FCM à tous les membres du groupe sauf l'expéditeur
   await Promise.all(
