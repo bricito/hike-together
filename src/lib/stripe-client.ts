@@ -1,5 +1,6 @@
 export async function startCheckout(params: {
   hikeId: string;
+  hikeSlug: string;
   hikeTitle: string;
   priceCents: number;
   currency: string;
