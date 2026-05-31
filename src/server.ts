@@ -97,6 +97,14 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
       return Response.json({ error: "Prix invalide" }, { status: 400 });
     }
 
+    // Calcul du montant total facturé au participant
+    // L'organisateur indique ce qu'il veut recevoir (body.priceCents)
+    // On ajoute la commission BlablaHike (10%) et les frais Stripe (0.25€ + 1.5%)
+    // Total = (priceCents + 25) / (1 - 0.10 - 0.015)
+    //       = (priceCents + 25) / 0.885
+    // Arrondi au centime supérieur
+    const totalCents = Math.ceil((body.priceCents + 25) / 0.885);
+
     const { createClient } = await import("@supabase/supabase-js");
     const supabase = createClient(
       env.SUPABASE_URL,
@@ -129,9 +137,9 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
         customer_email: body.userEmail,
         "line_items[0][quantity]": "1",
         "line_items[0][price_data][currency]": body.currency.toLowerCase(),
-        "line_items[0][price_data][unit_amount]": String(body.priceCents),
+        "line_items[0][price_data][unit_amount]": String(totalCents),
         "line_items[0][price_data][product_data][name]": `Participation — ${body.hikeTitle}`,
-        "line_items[0][price_data][product_data][description]": "Partage des frais de randonnée",
+        "line_items[0][price_data][product_data][description]": "Participation à la randonnée — frais de service inclus",
         "metadata[hikeId]": body.hikeId,
         "metadata[userId]": body.userId,
         "payment_intent_data[metadata][hikeId]": body.hikeId,
@@ -147,7 +155,7 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
       return Response.json({ error: session.error?.message ?? "Erreur Stripe" }, { status: 500 });
     }
 
-    return Response.json({ url: session.url, sessionId: session.id });
+    return Response.json({ url: session.url, sessionId: session.id, totalCents });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erreur interne";
     return Response.json({ error: message }, { status: 500 });
