@@ -111,6 +111,8 @@ function ProfilePage() {
           city,
           country,
           hiking_level,
+          participant_badge,
+          organizer_badge,
           created_at
         `)
         .eq("id", id)
