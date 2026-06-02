@@ -77,7 +77,49 @@ function renderStars(rating: number) {
     </div>
   );
 }
+function participantBadgeLabel(badge?: string | null) {
+  switch (badge) {
+    case "new":
+      return "🥾 Nouveau";
 
+    case "walker":
+      return "🌲 Marcheur";
+
+    case "explorer":
+      return "⛰️ Explorateur";
+
+    case "adventurer":
+      return "🏔️ Aventurier";
+
+    case "legend":
+      return "🦅 Légende";
+
+    default:
+      return null;
+  }
+}
+
+function organizerBadgeLabel(badge?: string | null) {
+  switch (badge) {
+    case "organizer":
+      return "📍 Organisateur";
+
+    case "local_guide":
+      return "🧭 Guide Local";
+
+    case "expert_guide":
+      return "🏕️ Guide Expert";
+
+    case "mountain_leader":
+      return "🌄 Leader Montagne";
+
+    case "ambassador":
+      return "👑 Ambassadeur Rando";
+
+    default:
+      return null;
+  }
+}
 function ProfilePage() {
   const { id } = Route.useParams();
 
@@ -204,8 +246,30 @@ function ProfilePage() {
 
                   <div className="flex-1 min-w-0">
                     <h1 className="font-display text-2xl sm:text-3xl truncate">
-                      {profile.full_name ?? "Randonneur"}
-                    </h1>
+  {profile.full_name ?? "Randonneur"}
+</h1>
+
+<div className="mt-3 flex flex-wrap gap-2">
+  {profile.participant_badge && (
+    <Badge
+      variant="secondary"
+      className="bg-green-100 text-green-800 border-green-200"
+    >
+      {participantBadgeLabel(profile.participant_badge)}
+    </Badge>
+  )}
+
+  {profile.organizer_badge && (
+    <Badge
+      variant="secondary"
+      className="bg-blue-100 text-blue-800 border-blue-200"
+    >
+      {organizerBadgeLabel(profile.organizer_badge)}
+    </Badge>
+  )}
+</div>
+
+
 
                     <div className="mt-2 flex flex-wrap gap-2 text-sm text-muted-foreground">
                       {(profile.city || profile.country) && (
