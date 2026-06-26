@@ -17,11 +17,11 @@ serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
   // Récupérer les users proches avec PostGIS
-  const { data: nearbyUsers, error } = await supabase.rpc("get_users_near_hike", {
-    hike_lat: hike.latitude,
-    hike_lng: hike.longitude,
-    radius_km: RADIUS_KM,
-    exclude_user_id: hike.created_by, // ne pas notifier le créateur
+ const { data: nearbyUsers, error } = await supabase.rpc("get_users_near_hike", {
+  exclude_user_id: hike.organizer_id,  // ← était après radius_km
+  hike_lat: hike.latitude,
+  hike_lng: hike.longitude,
+  radius_km: RADIUS_KM,
   });
 
   if (error) {
