@@ -5,7 +5,7 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY")!;
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const RADIUS_KM = 50;
-const APP_URL = "https://blablahike.com"; // ← adapte si besoin
+const APP_URL = "https://blablahike.eu"; // ← adapte si besoin
 
 serve(async (req) => {
   try {
@@ -41,7 +41,7 @@ serve(async (req) => {
     }
 
     const emails = nearbyUsers.map((user: { email: string; full_name: string }) => ({
-      from: "BlablaHike <no-reply@blablahike.com>",
+      from: "BlablaHike <no-reply@blablahike.eu>",
       to: user.email,
       subject: `🥾 Nouvelle rando près de chez vous : ${hike.title}`,
       html: buildEmailHtml(user, hike),
