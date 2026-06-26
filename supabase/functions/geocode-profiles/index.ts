@@ -5,54 +5,82 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 serve(async () => {
+  console.log("Starting geocode-profiles...");
+  
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-  // Récupérer les profils sans coordonnées mais avec une ville
+  console.log("Fetching profiles without coordinates...");
+  
   const { data: profiles, error } = await supabase
     .from("profiles")
-    .select("id, ville")
-    .not("ville", "is", null)
+    .select("id, city")
+    .not("city", "is", null)
     .is("latitude", null);
 
-  if (error) return new Response(JSON.stringify(error), { status: 500 });
-  if (!profiles?.length) return new Response("Nothing to geocode", { status: 200 });
+  if (error) {
+    console.error("Error fetching profiles:", JSON.stringify(error));
+    return new Response(JSON.stringify(error), { status: 500 });
+  }
+
+  console.log(`Found ${profiles?.length ?? 0} profiles to geocode`);
+
+  if (!profiles?.length) {
+    return new Response("Nothing to geocode", { status: 200 });
+  }
 
   let success = 0;
   let failed = 0;
 
   for (const profile of profiles) {
-    const coords = await geocode(profile.ville);
+    console.log(`Geocoding: ${profile.city}`);
+    
+    const coords = await geocode(profile.city);
 
-    if (!coords) { failed++; continue; }
+    if (!coords) {
+      console.warn(`Failed to geocode: ${profile.city}`);
+      failed++;
+      continue;
+    }
 
-    await supabase
+    const { error: updateError } = await supabase
       .from("profiles")
       .update({ latitude: coords.lat, longitude: coords.lng })
       .eq("id", profile.id);
 
-    success++;
+    if (updateError) {
+      console.error(`Update error for ${profile.id}:`, JSON.stringify(updateError));
+      failed++;
+    } else {
+      console.log(`✓ ${profile.city} → ${coords.lat}, ${coords.lng}`);
+      success++;
+    }
 
-    // Respecter le rate limit Nominatim : 1 requête/seconde
     await delay(1100);
   }
 
-  return new Response(
-    JSON.stringify({ success, failed }),
-    { status: 200, headers: { "Content-Type": "application/json" } }
-  );
+  const result = { success, failed };
+  console.log("Done:", JSON.stringify(result));
+  
+  return new Response(JSON.stringify(result), {
+    status: 200,
+    headers: { "Content-Type": "application/json" },
+  });
 });
 
 async function geocode(city: string): Promise<{ lat: number; lng: number } | null> {
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&countrycodes=fr`;
 
-  const res = await fetch(url, {
-    headers: { "User-Agent": "BlablaHike/1.0" }, // requis par Nominatim
-  });
-
-  const data = await res.json();
-  if (!data?.length) return null;
-
-  return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "BlablaHike/1.0" },
+    });
+    const data = await res.json();
+    if (!data?.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch (e) {
+    console.error("Geocode fetch error:", e);
+    return null;
+  }
 }
 
 const delay = (ms: number) => new Promise((r) => setTimeout(r, ms));
