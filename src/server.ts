@@ -64,6 +64,10 @@ const STATIC_FILES: Record<string, { content: string; contentType: string }> = {
   },
 };
 
+// Nombre de jours après la date de la rando avant transfert automatique
+// (délai de sécurité pour laisser le temps aux litiges/annulations de remonter)
+const PAYOUT_DELAY_DAYS = 3;
+
 // ─── Helpers Stripe ─────────────────────────────────────────────────────────
 
 function stripeHeaders(env: Record<string, string>) {
@@ -100,13 +104,10 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
       return Response.json({ error: "Prix invalide" }, { status: 400 });
     }
 
-    // Total facturé au participant = ce que l'organisateur veut recevoir (priceCents)
-    // + commission BlablaHike (10%) + frais Stripe (0.25€ + 1.5%)
     const totalCents = Math.ceil((body.priceCents + 25) / 0.885);
 
     const supabase = await getSupabase(env);
 
-    // Upsert participation en pending — on stocke déjà le montant net dû à l'organisateur
     await supabase
       .from("hike_participants")
       .upsert(
@@ -238,7 +239,6 @@ async function handleConnectOnboard(request: Request, env: Record<string, string
 
     let accountId = profile?.stripe_connect_account_id as string | undefined;
 
-    // Créer le compte Connect s'il n'existe pas encore
     if (!accountId) {
       const accountRes = await fetch("https://api.stripe.com/v1/accounts", {
         method: "POST",
@@ -266,7 +266,6 @@ async function handleConnectOnboard(request: Request, env: Record<string, string
         .eq("id", body.userId);
     }
 
-    // Générer le lien d'onboarding (à durée de vie limitée, à régénérer si expiré)
     const linkRes = await fetch("https://api.stripe.com/v1/account_links", {
       method: "POST",
       headers: stripeHeaders(env),
@@ -347,6 +346,103 @@ async function handleConnectStatus(request: Request, env: Record<string, string>
   }
 }
 
+// ─── Logique de payout réutilisable (appel manuel + cron) ──────────────────
+
+type PayoutResult =
+  | { ok: true; hikeId: string; transferId: string; amountCents: number }
+  | { ok: false; hikeId: string; error: string };
+
+async function runHikePayout(
+  hikeId: string,
+  env: Record<string, string>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  supabase: any,
+): Promise<PayoutResult> {
+  const { data: hike, error: hikeError } = await supabase
+    .from("hikes")
+    .select("id, organizer_id, payout_status")
+    .eq("id", hikeId)
+    .single();
+
+  if (hikeError || !hike) {
+    return { ok: false, hikeId, error: "Rando introuvable" };
+  }
+
+  if (hike.payout_status === "transferred") {
+    return { ok: false, hikeId, error: "Fonds déjà transférés" };
+  }
+
+  const { data: organizerProfile } = await supabase
+    .from("profiles")
+    .select("stripe_connect_account_id, stripe_connect_payouts_enabled")
+    .eq("id", hike.organizer_id)
+    .single();
+
+  if (!organizerProfile?.stripe_connect_account_id) {
+    return { ok: false, hikeId, error: "Organisateur sans compte de paiement configuré" };
+  }
+
+  if (!organizerProfile.stripe_connect_payouts_enabled) {
+    return { ok: false, hikeId, error: "Compte organisateur non encore vérifié par Stripe" };
+  }
+
+  const { data: participants, error: participantsError } = await supabase
+    .from("hike_participants")
+    .select("id, price_cents_net")
+    .eq("hike_id", hikeId)
+    .eq("payment_status", "paid")
+    .eq("payout_status", "pending");
+
+  if (participantsError) {
+    return { ok: false, hikeId, error: "Erreur lecture participants" };
+  }
+
+  const amountCents = (participants ?? []).reduce(
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (sum: number, p: any) => sum + (p.price_cents_net ?? 0),
+    0,
+  );
+
+  if (amountCents <= 0) {
+    // Rien à transférer (ex: rando sans participants payants) — on marque quand même
+    // comme traité pour ne pas la re-scanner à chaque cron
+    await supabase.from("hikes").update({ payout_status: "transferred" }).eq("id", hikeId);
+    return { ok: false, hikeId, error: "Rien à transférer" };
+  }
+
+  const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
+    method: "POST",
+    headers: stripeHeaders(env),
+    body: new URLSearchParams({
+      amount: String(amountCents),
+      currency: "eur",
+      destination: organizerProfile.stripe_connect_account_id,
+      "metadata[hikeId]": hikeId,
+    }),
+  });
+
+  const transfer = await transferRes.json() as { id: string; error?: { message: string } };
+
+  if (!transferRes.ok) {
+    return { ok: false, hikeId, error: transfer.error?.message ?? "Erreur Stripe transfer" };
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const participantIds = (participants ?? []).map((p: any) => p.id);
+
+  await supabase
+    .from("hike_participants")
+    .update({ payout_status: "transferred" })
+    .in("id", participantIds);
+
+  await supabase
+    .from("hikes")
+    .update({ payout_status: "transferred", stripe_transfer_id: transfer.id })
+    .eq("id", hikeId);
+
+  return { ok: true, hikeId, transferId: transfer.id, amountCents };
+}
+
 async function handleHikePayout(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -355,86 +451,61 @@ async function handleHikePayout(request: Request, env: Record<string, string>): 
   try {
     const body = await request.json() as { hikeId: string };
     const supabase = await getSupabase(env);
+    const result = await runHikePayout(body.hikeId, env, supabase);
 
-    const { data: hike, error: hikeError } = await supabase
-      .from("hikes")
-      .select("id, organizer_id, payout_status")
-      .eq("id", body.hikeId)
-      .single();
-
-    if (hikeError || !hike) {
-      return Response.json({ error: "Rando introuvable" }, { status: 404 });
+    if (!result.ok) {
+      return Response.json({ error: result.error }, { status: 400 });
     }
 
-    if (hike.payout_status === "transferred") {
-      return Response.json({ error: "Les fonds ont déjà été transférés pour cette rando" }, { status: 400 });
-    }
-
-    const { data: organizerProfile } = await supabase
-      .from("profiles")
-      .select("stripe_connect_account_id, stripe_connect_payouts_enabled")
-      .eq("id", hike.organizer_id)
-      .single();
-
-    if (!organizerProfile?.stripe_connect_account_id) {
-      return Response.json({ error: "L'organisateur n'a pas configuré son compte de paiement" }, { status: 400 });
-    }
-
-    if (!organizerProfile.stripe_connect_payouts_enabled) {
-      return Response.json({ error: "Le compte de l'organisateur n'est pas encore vérifié par Stripe" }, { status: 400 });
-    }
-
-    const { data: participants, error: participantsError } = await supabase
-      .from("hike_participants")
-      .select("id, price_cents_net")
-      .eq("hike_id", body.hikeId)
-      .eq("payment_status", "paid")
-      .eq("payout_status", "pending");
-
-    if (participantsError) {
-      return Response.json({ error: "Erreur lecture participants" }, { status: 500 });
-    }
-
-    const amountCents = (participants ?? []).reduce((sum, p) => sum + (p.price_cents_net ?? 0), 0);
-
-    if (amountCents <= 0) {
-      return Response.json({ error: "Rien à transférer pour cette rando" }, { status: 400 });
-    }
-
-    const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
-      method: "POST",
-      headers: stripeHeaders(env),
-      body: new URLSearchParams({
-        amount: String(amountCents),
-        currency: "eur",
-        destination: organizerProfile.stripe_connect_account_id,
-        "metadata[hikeId]": body.hikeId,
-      }),
-    });
-
-    const transfer = await transferRes.json() as { id: string; error?: { message: string } };
-
-    if (!transferRes.ok) {
-      return Response.json({ error: transfer.error?.message ?? "Erreur Stripe transfer" }, { status: 500 });
-    }
-
-    const participantIds = (participants ?? []).map((p) => p.id);
-
-    await supabase
-      .from("hike_participants")
-      .update({ payout_status: "transferred" })
-      .in("id", participantIds);
-
-    await supabase
-      .from("hikes")
-      .update({ payout_status: "transferred", stripe_transfer_id: transfer.id })
-      .eq("id", body.hikeId);
-
-    return Response.json({ ok: true, transferId: transfer.id, amountCents });
+    return Response.json({ ok: true, transferId: result.transferId, amountCents: result.amountCents });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erreur interne";
     console.error("Payout error:", message);
     return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+// ─── Cron : scan des randos passées et transfert automatique ──────────────
+
+async function runScheduledPayouts(env: Record<string, string>): Promise<void> {
+  const supabase = await getSupabase(env);
+
+  const threshold = new Date();
+  threshold.setDate(threshold.getDate() - PAYOUT_DELAY_DAYS);
+
+  // Adapte le nom de colonne "date" si ta table hikes utilise un autre champ
+  // (ex: "hike_date", "start_date"...). Adapte aussi le filtre "status" si tu as
+  // une colonne d'état de rando pour exclure les randos annulées.
+  const { data: hikes, error } = await supabase
+    .from("hikes")
+    .select("id")
+    .eq("payout_status", "pending")
+    .lte("date", threshold.toISOString());
+
+  if (error) {
+    console.error("Cron payout: erreur lecture hikes", error.message);
+    return;
+  }
+
+  if (!hikes || hikes.length === 0) {
+    console.log("Cron payout: aucune rando à traiter");
+    return;
+  }
+
+  console.log(`Cron payout: ${hikes.length} rando(s) à traiter`);
+
+  for (const hike of hikes) {
+    try {
+      const result = await runHikePayout(hike.id as string, env, supabase);
+      if (result.ok) {
+        console.log(`Cron payout: transfert ${result.transferId} de ${result.amountCents} centimes pour la rando ${hike.id}`);
+      } else {
+        console.warn(`Cron payout: rando ${hike.id} non traitée — ${result.error}`);
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Erreur inconnue";
+      console.error(`Cron payout: erreur sur la rando ${hike.id}`, message);
+    }
   }
 }
 
@@ -508,9 +579,6 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
         .eq("stripe_payment_intent_id", charge.payment_intent as string);
     }
 
-    // Connect : mise à jour du statut d'onboarding de l'organisateur
-    // ⚠️ Nécessite d'activer les événements "Connect" sur cet endpoint webhook
-    // dans le dashboard Stripe (ou de créer un endpoint séparé avec son propre secret)
     if (event.type === "account.updated") {
       const account = event.data.object as {
         id: string;
@@ -541,7 +609,6 @@ export default {
     const url = new URL(request.url);
     const e = env as Record<string, string>;
 
-    // Routes API Stripe — interceptées avant TanStack Router
     if (url.pathname === "/api/create-checkout") {
       return handleCreateCheckout(request, e);
     }
@@ -580,5 +647,11 @@ export default {
       console.error(error);
       return brandedErrorResponse();
     }
+  },
+
+  // Déclenché par le Cron Trigger configuré dans wrangler.jsonc
+  async scheduled(_event: unknown, env: unknown, ctx: { waitUntil: (p: Promise<unknown>) => void }) {
+    const e = env as Record<string, string>;
+    ctx.waitUntil(runScheduledPayouts(e));
   },
 };
