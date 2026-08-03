@@ -3,7 +3,7 @@
   "name": "hike-together",
   "main": "dist/server/server.js",
   "compatibility_date": "2025-01-01",
-  "compatibility_flags": ["nodejs_compat"],  // ← ajouter cette ligne
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "directory": "dist/client"
   },
@@ -18,7 +18,8 @@
       "enabled": true,
       "invocation_logs": true
     }
+  },
+  "triggers": {
+    "crons": ["0 3 * * *"]
   }
- "triggers": {
-    "crons": ["0 3 * * *"] // tous les jours à 3h UTC
 }
