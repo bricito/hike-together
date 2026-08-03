@@ -362,6 +362,7 @@ async function runHikePayout(
     .from("hikes")
     .select("id, organizer_id, payout_status")
     .eq("id", hikeId)
+    .neq("status", "cancelled")
     .single();
 
   if (hikeError || !hike) {
