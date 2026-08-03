@@ -362,7 +362,7 @@ async function runHikePayout(
     .from("hikes")
     .select("id, organizer_id, payout_status")
     .eq("id", hikeId)
-    .neq("status", "cancelled")
+
     .single();
 
   if (hikeError || !hike) {
@@ -377,6 +377,7 @@ async function runHikePayout(
     .from("profiles")
     .select("stripe_connect_account_id, stripe_connect_payouts_enabled")
     .eq("id", hike.organizer_id)
+  
     .single();
 
   if (!organizerProfile?.stripe_connect_account_id) {
@@ -481,6 +482,7 @@ async function runScheduledPayouts(env: Record<string, string>): Promise<void> {
     .from("hikes")
     .select("id")
     .eq("payout_status", "pending")
+    .neq("status", "cancelled")
     .lte("starts_at", threshold.toISOString());
 
   if (error) {
