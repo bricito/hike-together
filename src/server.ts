@@ -480,7 +480,7 @@ async function runScheduledPayouts(env: Record<string, string>): Promise<void> {
     .from("hikes")
     .select("id")
     .eq("payout_status", "pending")
-    .lte("date", threshold.toISOString());
+    .lte("starts_at", threshold.toISOString());
 
   if (error) {
     console.error("Cron payout: erreur lecture hikes", error.message);
