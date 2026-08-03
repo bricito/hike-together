@@ -58,14 +58,27 @@ async function normalizeCatastrophicSsrResponse(response: Response): Promise<Res
 }
 
 const STATIC_FILES: Record<string, { content: string; contentType: string }> = {
- 
   "/robots.txt": {
     content: `User-agent: *\nAllow: /\nDisallow: /me\nDisallow: /messages\nDisallow: /notifications\nDisallow: /my-hikes\nDisallow: /create\nDisallow: /checkin\nDisallow: /super-admin-8472\nDisallow: /reset-password\n\nSitemap: https://blablahike.eu/sitemap.xml`,
     contentType: "text/plain",
   },
 };
 
-// ─── Handlers Stripe ────────────────────────────────────────────────────────
+// ─── Helpers Stripe ─────────────────────────────────────────────────────────
+
+function stripeHeaders(env: Record<string, string>) {
+  return {
+    Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
+    "Content-Type": "application/x-www-form-urlencoded",
+  };
+}
+
+async function getSupabase(env: Record<string, string>) {
+  const { createClient } = await import("@supabase/supabase-js");
+  return createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+}
+
+// ─── Handlers Stripe — paiement participant ────────────────────────────────
 
 async function handleCreateCheckout(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== "POST") {
@@ -87,20 +100,13 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
       return Response.json({ error: "Prix invalide" }, { status: 400 });
     }
 
-    // Calcul du montant total facturé au participant
-    // L'organisateur indique ce qu'il veut recevoir (body.priceCents)
-    // On ajoute la commission BlablaHike (10%) et les frais Stripe (0.25€ + 1.5%)
-    // Total = (priceCents + 25) / (1 - 0.10 - 0.015)
-    //       = (priceCents + 25) / 0.885
+    // Total facturé au participant = ce que l'organisateur veut recevoir (priceCents)
+    // + commission BlablaHike (10%) + frais Stripe (0.25€ + 1.5%)
     const totalCents = Math.ceil((body.priceCents + 25) / 0.885);
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      env.SUPABASE_URL,
-      env.SUPABASE_SERVICE_ROLE_KEY,
-    );
+    const supabase = await getSupabase(env);
 
-    // Upsert participation en pending
+    // Upsert participation en pending — on stocke déjà le montant net dû à l'organisateur
     await supabase
       .from("hike_participants")
       .upsert(
@@ -109,17 +115,15 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
           user_id: body.userId,
           status: "pending",
           payment_status: "pending",
+          price_cents_net: body.priceCents,
+          payout_status: "pending",
         },
         { onConflict: "hike_id,user_id", ignoreDuplicates: true },
       );
 
-    // Créer la session Stripe
     const stripeRes = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: stripeHeaders(env),
       body: new URLSearchParams({
         mode: "payment",
         "payment_method_types[0]": "card",
@@ -131,8 +135,10 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
         "line_items[0][price_data][product_data][description]": "Participation à la randonnée — frais de service inclus",
         "metadata[hikeId]": body.hikeId,
         "metadata[userId]": body.userId,
+        "metadata[priceCentsNet]": String(body.priceCents),
         "payment_intent_data[metadata][hikeId]": body.hikeId,
         "payment_intent_data[metadata][userId]": body.userId,
+        "payment_intent_data[metadata][priceCentsNet]": String(body.priceCents),
         success_url: `${env.PUBLIC_BASE_URL}/hikes/${body.hikeSlug}?payment=success`,
         cancel_url: `${env.PUBLIC_BASE_URL}/hikes/${body.hikeSlug}?payment=cancelled`,
       }),
@@ -151,6 +157,289 @@ async function handleCreateCheckout(request: Request, env: Record<string, string
   }
 }
 
+async function handleRefund(request: Request, env: Record<string, string>): Promise<Response> {
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { participationId: string };
+
+    const supabase = await getSupabase(env);
+
+    const { data, error } = await supabase
+      .from("hike_participants")
+      .select("stripe_payment_intent_id, payment_status, payout_status, user_id")
+      .eq("id", body.participationId)
+      .single();
+
+    if (error || !data) {
+      return Response.json({ error: "Participation introuvable" }, { status: 404 });
+    }
+
+    if (data.payment_status !== "paid") {
+      return Response.json({ error: "Aucun paiement à rembourser" }, { status: 400 });
+    }
+
+    if (data.payout_status === "transferred") {
+      return Response.json({ error: "Fonds déjà transférés à l'organisateur, remboursement impossible depuis cet endpoint" }, { status: 400 });
+    }
+
+    if (!data.stripe_payment_intent_id) {
+      return Response.json({ error: "Payment intent manquant" }, { status: 400 });
+    }
+
+    const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
+      method: "POST",
+      headers: stripeHeaders(env),
+      body: new URLSearchParams({
+        payment_intent: data.stripe_payment_intent_id,
+      }),
+    });
+
+    const refund = await refundRes.json() as { id: string; error?: { message: string } };
+
+    if (!refundRes.ok) {
+      return Response.json({ error: refund.error?.message ?? "Erreur Stripe remboursement" }, { status: 500 });
+    }
+
+    await supabase
+      .from("hike_participants")
+      .update({
+        payment_status: "refunded",
+        status: "cancelled",
+      })
+      .eq("id", body.participationId);
+
+    return Response.json({ ok: true, refundId: refund.id });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    console.error("Refund error:", message);
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+// ─── Handlers Stripe Connect — organisateur ────────────────────────────────
+
+async function handleConnectOnboard(request: Request, env: Record<string, string>): Promise<Response> {
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { userId: string; email: string };
+    const supabase = await getSupabase(env);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_connect_account_id")
+      .eq("id", body.userId)
+      .single();
+
+    let accountId = profile?.stripe_connect_account_id as string | undefined;
+
+    // Créer le compte Connect s'il n'existe pas encore
+    if (!accountId) {
+      const accountRes = await fetch("https://api.stripe.com/v1/accounts", {
+        method: "POST",
+        headers: stripeHeaders(env),
+        body: new URLSearchParams({
+          type: "express",
+          email: body.email,
+          "capabilities[card_payments][requested]": "true",
+          "capabilities[transfers][requested]": "true",
+          "metadata[userId]": body.userId,
+        }),
+      });
+
+      const account = await accountRes.json() as { id: string; error?: { message: string } };
+
+      if (!accountRes.ok) {
+        return Response.json({ error: account.error?.message ?? "Erreur création compte Stripe" }, { status: 500 });
+      }
+
+      accountId = account.id;
+
+      await supabase
+        .from("profiles")
+        .update({ stripe_connect_account_id: accountId })
+        .eq("id", body.userId);
+    }
+
+    // Générer le lien d'onboarding (à durée de vie limitée, à régénérer si expiré)
+    const linkRes = await fetch("https://api.stripe.com/v1/account_links", {
+      method: "POST",
+      headers: stripeHeaders(env),
+      body: new URLSearchParams({
+        account: accountId,
+        refresh_url: `${env.PUBLIC_BASE_URL}/me/payments?refresh=true`,
+        return_url: `${env.PUBLIC_BASE_URL}/me/payments?onboarding=success`,
+        type: "account_onboarding",
+      }),
+    });
+
+    const link = await linkRes.json() as { url: string; error?: { message: string } };
+
+    if (!linkRes.ok) {
+      return Response.json({ error: link.error?.message ?? "Erreur génération lien onboarding" }, { status: 500 });
+    }
+
+    return Response.json({ url: link.url });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+async function handleConnectStatus(request: Request, env: Record<string, string>): Promise<Response> {
+  const url = new URL(request.url);
+  const userId = url.searchParams.get("userId");
+
+  if (!userId) {
+    return Response.json({ error: "userId manquant" }, { status: 400 });
+  }
+
+  try {
+    const supabase = await getSupabase(env);
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("stripe_connect_account_id")
+      .eq("id", userId)
+      .single();
+
+    if (!profile?.stripe_connect_account_id) {
+      return Response.json({ connected: false, chargesEnabled: false, payoutsEnabled: false });
+    }
+
+    const accountRes = await fetch(`https://api.stripe.com/v1/accounts/${profile.stripe_connect_account_id}`, {
+      headers: { Authorization: `Bearer ${env.STRIPE_SECRET_KEY}` },
+    });
+
+    const account = await accountRes.json() as {
+      charges_enabled: boolean;
+      payouts_enabled: boolean;
+      details_submitted: boolean;
+      error?: { message: string };
+    };
+
+    if (!accountRes.ok) {
+      return Response.json({ error: account.error?.message ?? "Erreur Stripe" }, { status: 500 });
+    }
+
+    await supabase
+      .from("profiles")
+      .update({
+        stripe_connect_charges_enabled: account.charges_enabled,
+        stripe_connect_payouts_enabled: account.payouts_enabled,
+      })
+      .eq("id", userId);
+
+    return Response.json({
+      connected: true,
+      chargesEnabled: account.charges_enabled,
+      payoutsEnabled: account.payouts_enabled,
+      detailsSubmitted: account.details_submitted,
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+async function handleHikePayout(request: Request, env: Record<string, string>): Promise<Response> {
+  if (request.method !== "POST") {
+    return new Response("Method not allowed", { status: 405 });
+  }
+
+  try {
+    const body = await request.json() as { hikeId: string };
+    const supabase = await getSupabase(env);
+
+    const { data: hike, error: hikeError } = await supabase
+      .from("hikes")
+      .select("id, organizer_id, payout_status")
+      .eq("id", body.hikeId)
+      .single();
+
+    if (hikeError || !hike) {
+      return Response.json({ error: "Rando introuvable" }, { status: 404 });
+    }
+
+    if (hike.payout_status === "transferred") {
+      return Response.json({ error: "Les fonds ont déjà été transférés pour cette rando" }, { status: 400 });
+    }
+
+    const { data: organizerProfile } = await supabase
+      .from("profiles")
+      .select("stripe_connect_account_id, stripe_connect_payouts_enabled")
+      .eq("id", hike.organizer_id)
+      .single();
+
+    if (!organizerProfile?.stripe_connect_account_id) {
+      return Response.json({ error: "L'organisateur n'a pas configuré son compte de paiement" }, { status: 400 });
+    }
+
+    if (!organizerProfile.stripe_connect_payouts_enabled) {
+      return Response.json({ error: "Le compte de l'organisateur n'est pas encore vérifié par Stripe" }, { status: 400 });
+    }
+
+    const { data: participants, error: participantsError } = await supabase
+      .from("hike_participants")
+      .select("id, price_cents_net")
+      .eq("hike_id", body.hikeId)
+      .eq("payment_status", "paid")
+      .eq("payout_status", "pending");
+
+    if (participantsError) {
+      return Response.json({ error: "Erreur lecture participants" }, { status: 500 });
+    }
+
+    const amountCents = (participants ?? []).reduce((sum, p) => sum + (p.price_cents_net ?? 0), 0);
+
+    if (amountCents <= 0) {
+      return Response.json({ error: "Rien à transférer pour cette rando" }, { status: 400 });
+    }
+
+    const transferRes = await fetch("https://api.stripe.com/v1/transfers", {
+      method: "POST",
+      headers: stripeHeaders(env),
+      body: new URLSearchParams({
+        amount: String(amountCents),
+        currency: "eur",
+        destination: organizerProfile.stripe_connect_account_id,
+        "metadata[hikeId]": body.hikeId,
+      }),
+    });
+
+    const transfer = await transferRes.json() as { id: string; error?: { message: string } };
+
+    if (!transferRes.ok) {
+      return Response.json({ error: transfer.error?.message ?? "Erreur Stripe transfer" }, { status: 500 });
+    }
+
+    const participantIds = (participants ?? []).map((p) => p.id);
+
+    await supabase
+      .from("hike_participants")
+      .update({ payout_status: "transferred" })
+      .in("id", participantIds);
+
+    await supabase
+      .from("hikes")
+      .update({ payout_status: "transferred", stripe_transfer_id: transfer.id })
+      .eq("id", body.hikeId);
+
+    return Response.json({ ok: true, transferId: transfer.id, amountCents });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Erreur interne";
+    console.error("Payout error:", message);
+    return Response.json({ error: message }, { status: 500 });
+  }
+}
+
+// ─── Webhook Stripe (paiements + Connect) ──────────────────────────────────
+
 async function handleStripeWebhook(request: Request, env: Record<string, string>): Promise<Response> {
   if (request.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -161,7 +450,6 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
     const signature = request.headers.get("stripe-signature") ?? "";
     const secret = env.STRIPE_WEBHOOK_SECRET;
 
-    // Vérification signature Stripe (HMAC-SHA256)
     const encoder = new TextEncoder();
     const parts = signature.split(",");
     const tPart = parts.find((p) => p.startsWith("t="));
@@ -193,12 +481,11 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
       data: { object: Record<string, unknown> };
     };
 
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = await getSupabase(env);
 
     if (event.type === "checkout.session.completed") {
       const session = event.data.object;
-      const metadata = session.metadata as { hikeId: string; userId: string };
+      const metadata = session.metadata as { hikeId: string; userId: string; priceCentsNet?: string };
       await supabase
         .from("hike_participants")
         .update({
@@ -206,6 +493,7 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
           payment_status: "paid",
           stripe_checkout_session_id: session.id as string,
           stripe_payment_intent_id: session.payment_intent as string,
+          ...(metadata.priceCentsNet ? { price_cents_net: Number(metadata.priceCentsNet) } : {}),
         })
         .eq("hike_id", metadata.hikeId)
         .eq("user_id", metadata.userId)
@@ -220,6 +508,24 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
         .eq("stripe_payment_intent_id", charge.payment_intent as string);
     }
 
+    // Connect : mise à jour du statut d'onboarding de l'organisateur
+    // ⚠️ Nécessite d'activer les événements "Connect" sur cet endpoint webhook
+    // dans le dashboard Stripe (ou de créer un endpoint séparé avec son propre secret)
+    if (event.type === "account.updated") {
+      const account = event.data.object as {
+        id: string;
+        charges_enabled: boolean;
+        payouts_enabled: boolean;
+      };
+      await supabase
+        .from("profiles")
+        .update({
+          stripe_connect_charges_enabled: account.charges_enabled,
+          stripe_connect_payouts_enabled: account.payouts_enabled,
+        })
+        .eq("stripe_connect_account_id", account.id);
+    }
+
     return new Response("ok");
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Erreur interne";
@@ -228,79 +534,14 @@ async function handleStripeWebhook(request: Request, env: Record<string, string>
   }
 }
 
-async function handleRefund(request: Request, env: Record<string, string>): Promise<Response> {
-  if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
-  }
-
-  try {
-    const body = await request.json() as { participationId: string };
-
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
-
-    // Récupérer la participation et le payment_intent
-    const { data, error } = await supabase
-      .from("hike_participants")
-      .select("stripe_payment_intent_id, payment_status, user_id")
-      .eq("id", body.participationId)
-      .single();
-
-    if (error || !data) {
-      return Response.json({ error: "Participation introuvable" }, { status: 404 });
-    }
-
-    if (data.payment_status !== "paid") {
-      return Response.json({ error: "Aucun paiement à rembourser" }, { status: 400 });
-    }
-
-    if (!data.stripe_payment_intent_id) {
-      return Response.json({ error: "Payment intent manquant" }, { status: 400 });
-    }
-
-    // Déclencher le remboursement Stripe
-    const refundRes = await fetch("https://api.stripe.com/v1/refunds", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${env.STRIPE_SECRET_KEY}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        payment_intent: data.stripe_payment_intent_id,
-      }),
-    });
-
-    const refund = await refundRes.json() as { id: string; error?: { message: string } };
-
-    if (!refundRes.ok) {
-      return Response.json({ error: refund.error?.message ?? "Erreur Stripe remboursement" }, { status: 500 });
-    }
-
-    // Mettre à jour la participation en base
-    await supabase
-      .from("hike_participants")
-      .update({
-        payment_status: "refunded",
-        status: "cancelled",
-      })
-      .eq("id", body.participationId);
-
-    return Response.json({ ok: true, refundId: refund.id });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Erreur interne";
-    console.error("Refund error:", message);
-    return Response.json({ error: message }, { status: 500 });
-  }
-}
-
 // ────────────────────────────────────────────────────────────────────────────
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
+    const e = env as Record<string, string>;
 
     // Routes API Stripe — interceptées avant TanStack Router
-    const e = env as Record<string, string>;
     if (url.pathname === "/api/create-checkout") {
       return handleCreateCheckout(request, e);
     }
@@ -310,8 +551,16 @@ export default {
     if (url.pathname === "/api/refund") {
       return handleRefund(request, e);
     }
+    if (url.pathname === "/api/connect/onboard") {
+      return handleConnectOnboard(request, e);
+    }
+    if (url.pathname === "/api/connect/status") {
+      return handleConnectStatus(request, e);
+    }
+    if (url.pathname === "/api/payout-hike") {
+      return handleHikePayout(request, e);
+    }
 
-    // Fichiers statiques
     const staticFile = STATIC_FILES[url.pathname];
     if (staticFile) {
       return new Response(staticFile.content, {
