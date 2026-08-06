@@ -1,31 +1,62 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle2, Clock, CreditCard, Loader2 } from "lucide-react";
+import { Camera, Loader2 } from "lucide-react";
 
-export const Route = createFileRoute("/me/payments")({
-  component: PaymentsPage,
+export const Route = createFileRoute("/me")({
+  component: MyProfilePage,
 });
 
-type ConnectStatus = {
-  connected: boolean;
-  chargesEnabled: boolean;
-  payoutsEnabled: boolean;
-  detailsSubmitted?: boolean;
-};
+const HIKING_LEVELS = ["Débutant", "Intermédiaire", "Expert"];
 
-function PaymentsPage() {
+function initials(name?: string | null) {
+  if (!name) return "?";
+  return name
+    .split(" ")
+    .map((p) => p[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+}
+
+async function geocodeCity(
+  city: string
+): Promise<{ lat: number; lng: number } | null> {
+  if (!city.trim()) return null;
+
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city)}&format=json&limit=1&countrycodes=fr`;
+
+  try {
+    const res = await fetch(url, {
+      headers: { "User-Agent": "BlablaHike/1.0" },
+    });
+    const data = await res.json();
+    if (!data?.length) return null;
+    return { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) };
+  } catch {
+    return null;
+  }
+}
+
+function MyProfilePage() {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -33,40 +64,154 @@ function PaymentsPage() {
     }
   }, [loading, user, navigate]);
 
-  const { data: status, isLoading } = useQuery({
-    queryKey: ["connect-status", user?.id],
+  const { data: profile, isLoading } = useQuery({
+    queryKey: ["profile", user?.id],
     enabled: !!user,
     queryFn: async () => {
-      const res = await fetch(`/api/connect/status?userId=${user!.id}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erreur de récupération du statut");
-      return data as ConnectStatus;
-    },
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      return data && !data.payoutsEnabled ? 5000 : false;
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, full_name, avatar_url, bio, city, country, hiking_level")
+        .eq("id", user!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
     },
   });
 
-  const onboard = useMutation({
+  const [fullName, setFullName] = useState("");
+  const [bio, setBio] = useState("");
+  const [city, setCity] = useState("");
+  const [country, setCountry] = useState("");
+  const [hikingLevel, setHikingLevel] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+
+  const previousCity = useRef<string>("");
+
+  useEffect(() => {
+    if (profile) {
+      setFullName(profile.full_name ?? "");
+      setBio(profile.bio ?? "");
+      setCity(profile.city ?? "");
+      setCountry(profile.country ?? "");
+      setHikingLevel(profile.hiking_level ?? "");
+      setAvatarUrl(profile.avatar_url ?? "");
+      previousCity.current = profile.city ?? "";
+    }
+  }, [profile]);
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Veuillez sélectionner une image.");
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const img = new Image();
+      const imageUrl = URL.createObjectURL(file);
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = imageUrl;
+      });
+
+      const SIZE = 128;
+      const canvas = document.createElement("canvas");
+      canvas.width = SIZE;
+      canvas.height = SIZE;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Impossible de compresser l'image.");
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, SIZE, SIZE);
+
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, SIZE, SIZE);
+
+      const blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, "image/webp", 0.6);
+      });
+      if (!blob) throw new Error("Compression échouée.");
+
+      const compressedFile = new File([blob], "avatar.webp", {
+        type: "image/webp",
+      });
+
+      const path = `${user.id}/avatar.webp`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(path, compressedFile, { upsert: true, contentType: "image/webp" });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(path);
+      const publicUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      setAvatarUrl(publicUrl);
+
+      const { error: dbError } = await supabase
+        .from("profiles")
+        .upsert({ id: user.id, avatar_url: publicUrl });
+      if (dbError) throw dbError;
+
+      qc.invalidateQueries({ queryKey: ["profile", user.id] });
+      toast.success("Photo optimisée !");
+    } catch (err: any) {
+      toast.error(err.message ?? "Erreur lors de l'upload.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const save = useMutation({
     mutationFn: async () => {
-      const { data: authData, error: authError } = await supabase.auth.getUser();
-      if (authError || !authData.user?.email) {
-        throw new Error("Impossible de récupérer votre email, reconnectez-vous.");
+      const trimmed = fullName.trim();
+      if (!trimmed) throw new Error("Le pseudo ne peut pas être vide");
+      if (trimmed.length > 60) throw new Error("Pseudo trop long (max 60)");
+      if (bio.length > 1000) throw new Error("Biographie trop longue (max 1000)");
+
+      let latitude: number | null = null;
+      let longitude: number | null = null;
+
+      const trimmedCity = city.trim();
+      if (trimmedCity && trimmedCity !== previousCity.current) {
+        const coords = await geocodeCity(trimmedCity);
+        if (coords) {
+          latitude = coords.lat;
+          longitude = coords.lng;
+        } else {
+          toast.warning("Ville introuvable, les notifications de proximité seront désactivées.");
+        }
       }
 
-      const res = await fetch("/api/connect/onboard", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user!.id, email: authData.user.email }),
+      const { error } = await supabase.from("profiles").upsert({
+        id: user!.id,
+        full_name: trimmed,
+        bio: bio.trim() || null,
+        city: trimmedCity || null,
+        country: country.trim() || null,
+        hiking_level: hikingLevel || null,
+        avatar_url: avatarUrl || null,
+        ...(trimmedCity !== previousCity.current && {
+          latitude,
+          longitude,
+        }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Erreur lors de la configuration");
-      return data as { url: string };
+
+      if (error) throw error;
+
+      previousCity.current = trimmedCity;
     },
-    onSuccess: (data) => {
-      window.location.href = data.url;
+
+    onSuccess: () => {
+      toast.success("Profil mis à jour");
+      qc.invalidateQueries({ queryKey: ["profile", user?.id] });
     },
+
     onError: (e: Error) => {
       toast.error(e.message);
     },
@@ -78,16 +223,25 @@ function PaymentsPage() {
 
       <main className="flex-1 container mx-auto px-4 py-10 max-w-2xl pb-24 md:pb-10">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display text-3xl">Mes paiements</h1>
+          <h1 className="font-display text-3xl">Mon espace</h1>
 
-          <Button asChild variant="outline" size="sm">
-            <Link to="/me">Retour au profil</Link>
-          </Button>
+          {user && (
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link to="/profile/$id" params={{ id: user.id }}>
+                  Voir mon profil public
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/me/payments">Mes paiements</Link>
+              </Button>
+            </div>
+          )}
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Recevoir les paiements de mes randos</CardTitle>
+            <CardTitle>Informations publiques</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -95,89 +249,123 @@ function PaymentsPage() {
               <p className="text-sm text-muted-foreground">Chargement…</p>
             ) : (
               <>
-                {!status?.connected && (
-                  <div className="rounded-2xl border border-border p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <CreditCard className="h-5 w-5 text-muted-foreground mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">Compte non configuré</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Pour recevoir l'argent de tes randos, configure ton compte de
-                          paiement (coordonnées bancaires + vérification d'identité,
-                          5 minutes, une seule fois).
-                        </p>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={() => onboard.mutate()}
-                      disabled={onboard.isPending}
-                      className="rounded-2xl"
-                    >
-                      {onboard.isPending ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Redirection…
-                        </>
-                      ) : (
-                        "Configurer mes paiements"
-                      )}
-                    </Button>
-                  </div>
-                )}
-
-                {status?.connected && !status.payoutsEnabled && (
-                  <div className="rounded-2xl border border-amber-300 bg-amber-50 dark:bg-amber-950/20 p-4 space-y-3">
-                    <div className="flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-amber-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-400">
-                          Vérification en cours
-                        </p>
-                        <p className="text-sm text-amber-700 dark:text-amber-400/80 mt-1">
-                          Ton compte est en cours de vérification par Stripe. Cela peut
-                          prendre quelques minutes à quelques jours.
-                        </p>
-                      </div>
-                    </div>
-                    {!status.detailsSubmitted && (
-                      <Button
-                        onClick={() => onboard.mutate()}
-                        disabled={onboard.isPending}
-                        variant="outline"
-                        className="rounded-2xl"
+                <div className="space-y-2">
+                  <Label>Photo de profil</Label>
+                  <div className="flex items-center gap-4">
+                    <div className="relative">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={avatarUrl || undefined} alt={fullName} />
+                        <AvatarFallback>{initials(fullName)}</AvatarFallback>
+                      </Avatar>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                        className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40 opacity-0 hover:opacity-100 transition-opacity"
                       >
-                        Terminer la configuration
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {status?.connected && status.payoutsEnabled && (
-                  <div className="rounded-2xl border border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20 p-4">
-                    <div className="flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-emerald-600 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium text-emerald-800 dark:text-emerald-400">
-                          Compte configuré
-                        </p>
-                        <p className="text-sm text-emerald-700 dark:text-emerald-400/80 mt-1">
-                          Les fonds de tes randos te seront versés automatiquement
-                          quelques jours après chaque sortie.
-                        </p>
-                      </div>
+                        {uploading ? (
+                          <Loader2 className="h-5 w-5 text-white animate-spin" />
+                        ) : (
+                          <Camera className="h-5 w-5 text-white" />
+                        )}
+                      </button>
                     </div>
+                    <div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="rounded-2xl"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploading}
+                      >
+                        {uploading ? "Upload en cours…" : "Changer la photo"}
+                      </Button>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Toutes les images sont automatiquement compressées.
+                      </p>
+                    </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                    />
                   </div>
-                )}
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    qc.invalidateQueries({ queryKey: ["connect-status", user?.id] })
-                  }
-                  className="text-xs text-muted-foreground underline"
-                >
-                  Rafraîchir le statut
-                </button>
+                <div className="space-y-2">
+                  <Label htmlFor="fullName">Pseudo</Label>
+                  <Input
+                    id="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    maxLength={60}
+                    placeholder="Votre pseudo"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Biographie</Label>
+                  <Textarea
+                    id="bio"
+                    value={bio}
+                    onChange={(e) => setBio(e.target.value)}
+                    maxLength={1000}
+                    rows={5}
+                    placeholder="Parlez de vous, vos randos préférées…"
+                  />
+                  <p className="text-xs text-muted-foreground">{bio.length}/1000</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">Ville</Label>
+                    <Input
+                      id="city"
+                      value={city}
+                      onChange={(e) => setCity(e.target.value)}
+                      maxLength={80}
+                      placeholder="ex: Chambéry"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Pays</Label>
+                    <Input
+                      id="country"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      maxLength={80}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="level">Niveau de randonnée</Label>
+                  <select
+                    id="level"
+                    value={hikingLevel}
+                    onChange={(e) => setHikingLevel(e.target.value)}
+                    className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
+                  >
+                    <option value="">— Sélectionnez votre niveau —</option>
+                    {HIKING_LEVELS.map((level) => (
+                      <option key={level} value={level}>
+                        {level}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="pt-2">
+                  <Button
+                    onClick={() => save.mutate()}
+                    disabled={save.isPending || uploading}
+                  >
+                    {save.isPending ? "Enregistrement…" : "Enregistrer"}
+                  </Button>
+                </div>
               </>
             )}
           </CardContent>
