@@ -8,6 +8,7 @@ import { MobileNav } from "@/components/MobileNav";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/lib/auth-context";
+import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle2, Clock, CreditCard, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/me/payments")({
@@ -41,8 +42,6 @@ function PaymentsPage() {
       if (!res.ok) throw new Error(data.error ?? "Erreur de récupération du statut");
       return data as ConnectStatus;
     },
-    // Repolle automatiquement tant que le compte n'est pas pleinement actif
-    // (utile juste après le retour de l'onboarding Stripe)
     refetchInterval: (query) => {
       const data = query.state.data;
       return data && !data.payoutsEnabled ? 5000 : false;
@@ -51,10 +50,15 @@ function PaymentsPage() {
 
   const onboard = useMutation({
     mutationFn: async () => {
+      const { data: authData, error: authError } = await supabase.auth.getUser();
+      if (authError || !authData.user?.email) {
+        throw new Error("Impossible de récupérer votre email, reconnectez-vous.");
+      }
+
       const res = await fetch("/api/connect/onboard", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user!.id, email: user!.email }),
+        body: JSON.stringify({ userId: user!.id, email: authData.user.email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Erreur lors de la configuration");
