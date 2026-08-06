@@ -241,13 +241,17 @@ function MyProfilePage() {
           <h1 className="font-display text-3xl">Mon espace</h1>
 
           {user && (
-            <Button asChild variant="outline" size="sm">
-              <Link to="/profile/$id" params={{ id: user.id }}>
-                Voir mon profil public
-              </Link>
-            </Button>
-          )}
-        </div>
+  <div className="flex gap-2">
+    <Button asChild variant="outline" size="sm">
+      <Link to="/profile/$id" params={{ id: user.id }}>
+        Voir mon profil public
+      </Link>
+    </Button>
+    <Button asChild variant="outline" size="sm">
+      <Link to="/me/payments">Mes paiements</Link>
+    </Button>
+  </div>
+)}
 
         <Card>
           <CardHeader>
