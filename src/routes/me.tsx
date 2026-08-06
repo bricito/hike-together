@@ -241,17 +241,18 @@ function MyProfilePage() {
           <h1 className="font-display text-3xl">Mon espace</h1>
 
           {user && (
-  <div className="flex gap-2">
-    <Button asChild variant="outline" size="sm">
-      <Link to="/profile/$id" params={{ id: user.id }}>
-        Voir mon profil public
-      </Link>
-    </Button>
-    <Button asChild variant="outline" size="sm">
-      <Link to="/me/payments">Mes paiements</Link>
-    </Button>
-  </div>
-)}
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link to="/profile/$id" params={{ id: user.id }}>
+                  Voir mon profil public
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link to="/me/payments">Mes paiements</Link>
+              </Button>
+            </div>
+          )}
+        </div>
 
         <Card>
           <CardHeader>
@@ -312,88 +313,4 @@ function MyProfilePage() {
 
                 {/* PSEUDO */}
                 <div className="space-y-2">
-                  <Label htmlFor="fullName">Pseudo</Label>
-                  <Input
-                    id="fullName"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    maxLength={60}
-                    placeholder="Votre pseudo"
-                  />
-                </div>
-
-                {/* BIO */}
-                <div className="space-y-2">
-                  <Label htmlFor="bio">Biographie</Label>
-                  <Textarea
-                    id="bio"
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    maxLength={1000}
-                    rows={5}
-                    placeholder="Parlez de vous, vos randos préférées…"
-                  />
-                  <p className="text-xs text-muted-foreground">{bio.length}/1000</p>
-                </div>
-
-                {/* VILLE / PAYS */}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label htmlFor="city">Ville</Label>
-                    <Input
-                      id="city"
-                      value={city}
-                      onChange={(e) => setCity(e.target.value)}
-                      maxLength={80}
-                      placeholder="ex: Chambéry"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="country">Pays</Label>
-                    <Input
-                      id="country"
-                      value={country}
-                      onChange={(e) => setCountry(e.target.value)}
-                      maxLength={80}
-                    />
-                  </div>
-                </div>
-
-                {/* NIVEAU */}
-                <div className="space-y-2">
-                  <Label htmlFor="level">Niveau de randonnée</Label>
-                  <select
-                    id="level"
-                    value={hikingLevel}
-                    onChange={(e) => setHikingLevel(e.target.value)}
-                    className="w-full h-10 rounded-lg border border-input bg-background px-3 text-sm"
-                  >
-                    <option value="">— Sélectionnez votre niveau —</option>
-                    {HIKING_LEVELS.map((level) => (
-                      <option key={level} value={level}>
-                        {level}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* SAVE */}
-                <div className="pt-2">
-                  <Button
-                    onClick={() => save.mutate()}
-                    disabled={save.isPending || uploading}
-                  >
-                    {save.isPending ? "Enregistrement…" : "Enregistrer"}
-                  </Button>
-                </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-      </main>
-
-      <SiteFooter />
-      <MobileNav />
-    </div>
-  );
-}
+                  <Label htmlFor="fullName">Pseudo</
