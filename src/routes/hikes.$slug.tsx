@@ -1,14 +1,25 @@
-```tsx
-import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  createFileRoute,
+  Link,
+  notFound,
+  useNavigate,
+} from "@tanstack/react-router";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { toast } from "sonner";
-import { useState, useEffect, type ReactNode } from "react";
+import { useState, useEffect } from "react";
+
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import { MobileNav } from "@/components/MobileNav";
 import { HikeParticipants } from "@/components/HikeParticipants";
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+
 import {
   Clock,
   TrendingUp,
@@ -26,6 +37,7 @@ import {
   QrCode,
   LogOut,
 } from "lucide-react";
+
 import {
   fetchHikeBySlug,
   fetchPublicHikes,
@@ -34,13 +46,16 @@ import {
   cancelJoinRequest,
   updateHike,
 } from "@/lib/hikes-api";
+
 import type { HikeView } from "@/lib/hikes-api";
 import type { Difficulty } from "@/lib/hikes-data";
+
 import {
   fetchHikeRequests,
   respondToRequest,
   saveLiabilityAcceptance,
 } from "@/lib/messages-api";
+
 import { useAuth } from "@/lib/auth-context";
 import { startCheckout } from "@/lib/stripe-client";
 
@@ -172,13 +187,13 @@ function LiabilityModal({
         </div>
 
         <p className="text-sm text-muted-foreground mb-4">
-          Avant de rejoindre cette randonnée, veuillez lire et accepter les
-          conditions ci-dessous.
+          Avant de rejoindre cette randonnée, veuillez lire et accepter
+          les conditions ci-dessous.
         </p>
 
         <button
           type="button"
-          onClick={() => setShowText((v) => !v)}
+          onClick={() => setShowText((value) => !value)}
           className="text-sm text-primary hover:underline mb-3 block"
         >
           {showText
@@ -201,26 +216,30 @@ function LiabilityModal({
           />
 
           <span className="text-sm font-medium">
-            Je reconnais les risques inhérents à la randonnée et accepte les
-            conditions de participation
+            Je reconnais les risques inhérents à la randonnée et
+            accepte les conditions de participation
           </span>
         </label>
 
         <p className="text-[11px] text-muted-foreground mt-2 mb-6">
-          En cochant cette case, votre acceptation sera horodatée et conservée.
-          Consultez notre{" "}
-          <Link to="/safety" className="text-primary hover:underline">
+          En cochant cette case, votre acceptation sera horodatée et
+          conservée. Consultez notre{" "}
+          <Link
+            to="/safety"
+            className="text-primary hover:underline"
+          >
             page Sécurité
           </Link>
           .
         </p>
 
-        {isPaid && totalCents && (
+        {isPaid && totalCents != null && totalCents > 0 && (
           <div className="rounded-2xl bg-secondary/50 border border-border p-3 mb-4 text-sm text-muted-foreground">
             <p>
               Montant total à régler :{" "}
               <span className="font-semibold text-foreground">
-                {(totalCents / 100).toFixed(2)} {currency ?? "EUR"}
+                {(totalCents / 100).toFixed(2)}{" "}
+                {currency ?? "EUR"}
               </span>
             </p>
 
@@ -250,9 +269,9 @@ function LiabilityModal({
             ) : isPaid ? (
               `Payer ${
                 totalCents
-                  ? (totalCents / 100).toFixed(2) +
-                    " " +
-                    (currency ?? "EUR")
+                  ? `${(totalCents / 100).toFixed(2)} ${
+                      currency ?? "EUR"
+                    }`
                   : ""
               }`
             ) : (
@@ -266,7 +285,7 @@ function LiabilityModal({
 }
 
 /* -------------------------------------------------------------------------- */
-/* CANCEL PARTICIPATION MODAL                                                */
+/* CANCEL MODAL                                                              */
 /* -------------------------------------------------------------------------- */
 
 function CancelParticipationModal({
@@ -300,8 +319,8 @@ function CancelParticipationModal({
 
         {isPaid ? (
           <div className="rounded-2xl bg-emerald-500/10 border border-emerald-200 dark:border-emerald-900 p-3 mb-6 text-sm text-emerald-700 dark:text-emerald-400">
-            ✓ Votre paiement sera remboursé automatiquement sous 5 à 10 jours
-            ouvrés sur votre moyen de paiement d'origine.
+            ✓ Votre paiement sera remboursé automatiquement sous 5 à 10
+            jours ouvrés sur votre moyen de paiement d'origine.
           </div>
         ) : (
           <p className="text-sm text-muted-foreground mb-6">
@@ -341,16 +360,6 @@ function CancelParticipationModal({
 /* EDIT HIKE MODAL                                                           */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Important :
- * starts_at est un timestamp with time zone.
- *
- * On utilise ici les méthodes LOCALES de Date pour afficher la date/heure
- * choisies par l'organisateur.
- *
- * Il ne faut pas utiliser toISOString().split("T") pour remplir les inputs
- * date/time, car toISOString() convertit automatiquement en UTC.
- */
 function EditHikeModal({
   hike,
   onClose,
@@ -362,20 +371,19 @@ function EditHikeModal({
 }) {
   const startsAt = new Date(hike.starts_at);
 
-  // Conversion de l'instant UTC stocké en base vers la date/heure locale
-  // du navigateur de l'organisateur.
   const pad = (value: number) => String(value).padStart(2, "0");
 
-  const dateStr = [
-    startsAt.getFullYear(),
-    pad(startsAt.getMonth() + 1),
-    pad(startsAt.getDate()),
-  ].join("-");
+  /*
+   * On utilise l'heure locale du navigateur.
+   * starts_at est un timestamp with time zone dans Supabase.
+   */
+  const dateStr = `${startsAt.getFullYear()}-${pad(
+    startsAt.getMonth() + 1
+  )}-${pad(startsAt.getDate())}`;
 
-  const timeStr = [
-    pad(startsAt.getHours()),
-    pad(startsAt.getMinutes()),
-  ].join(":");
+  const timeStr = `${pad(startsAt.getHours())}:${pad(
+    startsAt.getMinutes()
+  )}`;
 
   const [form, setForm] = useState({
     title: hike.title,
@@ -390,8 +398,8 @@ function EditHikeModal({
     description: hike.description,
     equipment: hike.equipment.join(", "),
     price:
-      hike.priceCents !== null && hike.priceCents > 0
-        ? (hike.priceCents / 100).toFixed(2)
+      hike.priceCents != null
+        ? (hike.priceCents / 100).toString()
         : "",
     currency: hike.currency || "EUR",
   });
@@ -411,30 +419,14 @@ function EditHikeModal({
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!form.date || !form.time) {
-        throw new Error("Veuillez choisir une date et une heure.");
+        throw new Error(
+          "Veuillez renseigner une date et une heure."
+        );
       }
 
-      /*
-       * IMPORTANT :
-       *
-       * new Date("2026-08-11T14:00") est interprété comme une date/heure
-       * locale par le navigateur.
-       *
-       * Ensuite toISOString() transforme correctement cet instant en UTC
-       * pour PostgreSQL timestamp with time zone.
-       *
-       * Exemple en France :
-       * 14:00 locale -> 12:00Z en été.
-       */
-      const localDateTime = new Date(
-        `${form.date}T${form.time}:00`
-      );
-
-      if (Number.isNaN(localDateTime.getTime())) {
-        throw new Error("La date ou l'heure est invalide.");
-      }
-
-      const starts_at = localDateTime.toISOString();
+      const starts_at = new Date(
+        `${form.date}T${form.time}`
+      ).toISOString();
 
       return updateHike(hike.id, {
         title: form.title.trim(),
@@ -450,18 +442,19 @@ function EditHikeModal({
           .split(",")
           .map((item) => item.trim())
           .filter(Boolean),
+
         /*
-         * On ne modifie pas volontairement l'image ici.
-         *
-         * Si ton updateHike actuel remet cover_image_url à null lorsque
-         * cover_image vaut null, il faudra également corriger updateHike
-         * dans hikes-api.ts pour ne pas supprimer l'image existante.
+         * On conserve l'image existante.
+         * Si aucune image n'est configurée, hike.image contient
+         * simplement l'image de fallback.
          */
-        cover_image: hike.image,
+        cover_image: hike.image || null,
+
         price_cents:
           form.price.trim() !== ""
             ? Math.round(Number(form.price) * 100)
             : null,
+
         currency: form.currency || "EUR",
       });
     },
@@ -474,7 +467,7 @@ function EditHikeModal({
       });
 
       qc.invalidateQueries({
-        queryKey: ["participation", hike.id],
+        queryKey: ["hike", hike.slug],
       });
 
       onSaved();
@@ -482,72 +475,20 @@ function EditHikeModal({
     },
 
     onError: (error: any) => {
-      console.error("Erreur update randonnée:", error);
-
       toast.error(
-        error?.message ?? "Impossible de mettre à jour la randonnée."
+        error?.message ??
+          "Impossible de mettre à jour la randonnée."
       );
     },
   });
-
-  const handleSubmit = () => {
-    if (!form.title.trim()) {
-      toast.error("Veuillez renseigner un titre.");
-      return;
-    }
-
-    if (!form.location.trim()) {
-      toast.error("Veuillez renseigner un lieu.");
-      return;
-    }
-
-    if (!form.date || !form.time) {
-      toast.error("Veuillez choisir une date et une heure.");
-      return;
-    }
-
-    if (Number(form.duration_hours) <= 0) {
-      toast.error("La durée doit être supérieure à 0.");
-      return;
-    }
-
-    if (Number(form.elevation_m) < 0) {
-      toast.error("Le dénivelé ne peut pas être négatif.");
-      return;
-    }
-
-    if (Number(form.max_participants) < 2) {
-      toast.error(
-        "Il faut prévoir au moins 2 participants."
-      );
-      return;
-    }
-
-    if (
-      form.price.trim() !== "" &&
-      (Number.isNaN(Number(form.price)) ||
-        Number(form.price) < 0)
-    ) {
-      toast.error("Le prix est invalide.");
-      return;
-    }
-
-    saveMut.mutate();
-  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
       <div className="bg-card border border-border rounded-3xl shadow-[var(--shadow-elegant)] max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="font-display text-2xl">
-              Modifier la randonnée
-            </h2>
-
-            <p className="text-xs text-muted-foreground mt-1">
-              Modifiez les informations de votre randonnée.
-            </p>
-          </div>
+          <h2 className="font-display text-2xl">
+            Modifier la randonnée
+          </h2>
 
           <Button
             type="button"
@@ -565,9 +506,10 @@ function EditHikeModal({
             <Input
               required
               value={form.title}
-              onChange={(e) => set("title", e.target.value)}
+              onChange={(e) =>
+                set("title", e.target.value)
+              }
               className="h-12 rounded-2xl"
-              placeholder="Ex : Randonnée au Mont Blanc"
             />
           </Field>
 
@@ -575,9 +517,10 @@ function EditHikeModal({
             <Input
               required
               value={form.location}
-              onChange={(e) => set("location", e.target.value)}
+              onChange={(e) =>
+                set("location", e.target.value)
+              }
               className="h-12 rounded-2xl"
-              placeholder="Ex : Chamonix, France"
             />
           </Field>
 
@@ -587,7 +530,9 @@ function EditHikeModal({
                 required
                 type="date"
                 value={form.date}
-                onChange={(e) => set("date", e.target.value)}
+                onChange={(e) =>
+                  set("date", e.target.value)
+                }
                 className="h-12 rounded-2xl"
               />
             </Field>
@@ -597,26 +542,12 @@ function EditHikeModal({
                 required
                 type="time"
                 value={form.time}
-                onChange={(e) => set("time", e.target.value)}
+                onChange={(e) =>
+                  set("time", e.target.value)
+                }
                 className="h-12 rounded-2xl"
               />
             </Field>
-          </div>
-
-          <div className="rounded-2xl bg-primary/5 border border-primary/10 p-3 text-xs text-muted-foreground">
-            <p>
-              <span className="font-medium text-foreground">
-                Heure affichée :
-              </span>{" "}
-              {form.date && form.time
-                ? `${form.date} à ${form.time}`
-                : "Date et heure non définies"}
-            </p>
-
-            <p className="mt-1">
-              L'heure saisie est l'heure locale de votre ordinateur.
-              Elle sera correctement enregistrée dans PostgreSQL.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -692,26 +623,27 @@ function EditHikeModal({
               required
               value={form.meeting_point}
               onChange={(e) =>
-                set("meeting_point", e.target.value)
+                set(
+                  "meeting_point",
+                  e.target.value
+                )
               }
               placeholder="Ex : Devant la mairie..."
               className="h-12 rounded-2xl"
             />
-
-            <p className="text-xs text-muted-foreground mt-1">
-              📍 Indiquez un lieu précis.
-            </p>
           </Field>
 
           <Field label="Description">
             <textarea
               value={form.description}
               onChange={(e) =>
-                set("description", e.target.value)
+                set(
+                  "description",
+                  e.target.value
+                )
               }
               rows={5}
-              className="w-full rounded-2xl border border-input bg-background p-3 text-sm resize-y"
-              placeholder="Décrivez la randonnée..."
+              className="w-full rounded-2xl border border-input bg-background p-3 text-sm"
             />
           </Field>
 
@@ -719,7 +651,10 @@ function EditHikeModal({
             <Input
               value={form.equipment}
               onChange={(e) =>
-                set("equipment", e.target.value)
+                set(
+                  "equipment",
+                  e.target.value
+                )
               }
               placeholder="Chaussures, eau, veste..."
               className="h-12 rounded-2xl"
@@ -734,7 +669,10 @@ function EditHikeModal({
                 step="0.01"
                 value={form.price}
                 onChange={(e) =>
-                  set("price", e.target.value)
+                  set(
+                    "price",
+                    e.target.value
+                  )
                 }
                 placeholder="Ex. 12.50"
                 className="h-12 rounded-2xl"
@@ -745,7 +683,10 @@ function EditHikeModal({
               <select
                 value={form.currency}
                 onChange={(e) =>
-                  set("currency", e.target.value)
+                  set(
+                    "currency",
+                    e.target.value
+                  )
                 }
                 className="w-full h-12 rounded-2xl border border-input bg-background px-3 text-sm"
               >
@@ -773,13 +714,10 @@ function EditHikeModal({
             type="button"
             className="flex-1 rounded-2xl"
             disabled={saveMut.isPending}
-            onClick={handleSubmit}
+            onClick={() => saveMut.mutate()}
           >
             {saveMut.isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                Enregistrement...
-              </>
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               "Enregistrer"
             )}
@@ -799,7 +737,7 @@ function Field({
   children,
 }: {
   label: string;
-  children: ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <label className="block">
@@ -818,16 +756,22 @@ function Field({
 
 function HikeDetail() {
   const { hike } = Route.useLoaderData();
+
   const { user } = useAuth();
   const navigate = useNavigate();
   const qc = useQueryClient();
 
-  const [showLiability, setShowLiability] = useState(false);
-  const [showEdit, setShowEdit] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-  const [totalCents, setTotalCents] = useState<number | undefined>(
-    undefined
-  );
+  const [showLiability, setShowLiability] =
+    useState(false);
+
+  const [showEdit, setShowEdit] =
+    useState(false);
+
+  const [showCancelModal, setShowCancelModal] =
+    useState(false);
+
+  const [totalCents, setTotalCents] =
+    useState<number | undefined>(undefined);
 
   const participationKey = [
     "participation",
@@ -837,20 +781,36 @@ function HikeDetail() {
 
   const { data: participation } = useQuery({
     queryKey: participationKey,
+
     queryFn: () =>
-      fetchMyParticipation(hike.id, user!.id),
+      fetchMyParticipation(
+        hike.id,
+        user!.id
+      ),
+
     enabled: !!user,
   });
 
   /* ---------------------------------------------------------------------- */
-  /* CALCUL DU PRIX TOTAL                                                  */
+  /* CALCUL STRIPE                                                          */
   /* ---------------------------------------------------------------------- */
 
   useEffect(() => {
-    if (hike.priceCents && hike.priceCents > 0) {
+    if (
+      hike.priceCents != null &&
+      hike.priceCents > 0
+    ) {
+      /*
+       * Prix organisateur + commission BlablaHike
+       * + frais Stripe.
+       */
       setTotalCents(
-        Math.ceil((hike.priceCents + 25) / 0.885)
+        Math.ceil(
+          (hike.priceCents + 25) / 0.885
+        )
       );
+    } else {
+      setTotalCents(undefined);
     }
   }, [hike.priceCents]);
 
@@ -863,13 +823,19 @@ function HikeDetail() {
       window.location.search
     );
 
-    if (params.get("payment") === "success") {
+    if (
+      params.get("payment") === "success"
+    ) {
       toast.success(
         "Paiement confirmé ! Vous participez à la randonnée 🎉"
       );
 
       qc.invalidateQueries({
         queryKey: participationKey,
+      });
+
+      qc.invalidateQueries({
+        queryKey: ["hikes"],
       });
 
       window.history.replaceState(
@@ -879,7 +845,9 @@ function HikeDetail() {
       );
     }
 
-    if (params.get("payment") === "cancelled") {
+    if (
+      params.get("payment") === "cancelled"
+    ) {
       toast.error("Paiement annulé.");
 
       window.history.replaceState(
@@ -888,10 +856,10 @@ function HikeDetail() {
         window.location.pathname
       );
     }
-  }, []);
+  }, [hike.id, user?.id]);
 
   /* ---------------------------------------------------------------------- */
-  /* ANNULATION POSSIBLE JUSQU'À 24H AVANT                                 */
+  /* ANNULATION                                                             */
   /* ---------------------------------------------------------------------- */
 
   const canCancelParticipation =
@@ -906,31 +874,55 @@ function HikeDetail() {
   const joinMut = useMutation({
     mutationFn: async () => {
       const {
-        data: u,
-      } = await (
-        await import("@/integrations/supabase/client")
-      ).supabase.auth.getUser();
+        data: authData,
+      } = await import(
+        "@/integrations/supabase/client"
+      ).then(({ supabase }) =>
+        supabase.auth.getUser()
+      );
 
-      if (u.user) {
-        await saveLiabilityAcceptance(
-          u.user.id,
-          hike.id
+      if (!authData.user) {
+        throw new Error(
+          "Vous devez être connecté."
         );
       }
 
+      /*
+       * Enregistrement de l'acceptation des
+       * conditions avant participation.
+       */
+      await saveLiabilityAcceptance(
+        authData.user.id,
+        hike.id
+      );
+
+      /*
+       * RANDONNÉE PAYANTE
+       *
+       * On crée d'abord la participation,
+       * puis on envoie l'utilisateur vers Stripe.
+       */
       if (
-        hike.priceCents &&
-        hike.priceCents > 0 &&
-        user?.email
+        hike.priceCents != null &&
+        hike.priceCents > 0
       ) {
-        await requestToJoinHike(hike.id);
+        if (!user?.email) {
+          throw new Error(
+            "Votre adresse e-mail est nécessaire pour effectuer le paiement."
+          );
+        }
+
+        await requestToJoinHike(
+          hike.id
+        );
 
         await startCheckout({
           hikeId: hike.id,
           hikeSlug: hike.slug,
           hikeTitle: hike.title,
           priceCents: hike.priceCents,
-          currency: hike.currency ?? "EUR",
+          currency:
+            hike.currency ?? "EUR",
           userId: user.id,
           userEmail: user.email,
         });
@@ -938,11 +930,22 @@ function HikeDetail() {
         return null;
       }
 
-      return requestToJoinHike(hike.id);
+      /*
+       * RANDONNÉE GRATUITE
+       */
+      return requestToJoinHike(
+        hike.id
+      );
     },
 
     onSuccess: (data) => {
+      /*
+       * Stripe redirige l'utilisateur,
+       * donc il n'y a pas de participation
+       * locale à mettre à jour ici.
+       */
       if (!data) {
+        setShowLiability(false);
         return;
       }
 
@@ -969,76 +972,19 @@ function HikeDetail() {
   });
 
   /* ---------------------------------------------------------------------- */
-  /* ANNULATION                                                              */
+  /* ANNULATION SIMPLE                                                      */
   /* ---------------------------------------------------------------------- */
 
   const cancelMut = useMutation({
-    mutationFn: () =>
-      cancelJoinRequest(participation!.id),
-
-    onSuccess: () => {
-      qc.setQueryData(
-        participationKey,
-        null
-      );
-
-      setShowCancelModal(false);
-
-      toast.success(
-        participation?.payment_status === "paid"
-          ? "Participation annulée. Remboursement en cours (5-10 jours ouvrés)."
-          : "Participation annulée."
-      );
-    },
-
-    onError: (error: any) => {
-      setShowCancelModal(false);
-
-      toast.error(
-        error?.message ??
-          "Impossible d'annuler la participation."
-      );
-    },
-  });
-
-  /* ---------------------------------------------------------------------- */
-  /* REMBOURSEMENT                                                          */
-  /* ---------------------------------------------------------------------- */
-
-  const cancelWithRefundMut = useMutation({
-    mutationFn: async () => {
-      if (
-        participation?.payment_status === "paid" &&
-        (participation as any)?.stripe_payment_intent_id
-      ) {
-        const res = await fetch(
-          "/api/refund",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              participationId:
-                participation.id,
-            }),
-          }
+    mutationFn: () => {
+      if (!participation) {
+        throw new Error(
+          "Participation introuvable."
         );
-
-        if (!res.ok) {
-          const error = await res
-            .json()
-            .catch(() => ({}));
-
-          throw new Error(
-            error.error ??
-              "Erreur lors du remboursement"
-          );
-        }
       }
 
       return cancelJoinRequest(
-        participation!.id
+        participation.id
       );
     },
 
@@ -1048,16 +994,10 @@ function HikeDetail() {
         null
       );
 
-      qc.invalidateQueries({
-        queryKey: ["hikes"],
-      });
-
       setShowCancelModal(false);
 
       toast.success(
-        participation?.payment_status === "paid"
-          ? "Participation annulée. Remboursement en cours (5-10 jours ouvrés)."
-          : "Participation annulée."
+        "Participation annulée."
       );
     },
 
@@ -1071,24 +1011,127 @@ function HikeDetail() {
     },
   });
 
-  const isOrganizer =
-    user?.id === hike.organizer.id;
+  /* ---------------------------------------------------------------------- */
+  /* ANNULATION + REMBOURSEMENT STRIPE                                     */
+  /* ---------------------------------------------------------------------- */
+
+  const cancelWithRefundMut =
+    useMutation({
+      mutationFn: async () => {
+        if (!participation) {
+          throw new Error(
+            "Participation introuvable."
+          );
+        }
+
+        /*
+         * Si le paiement Stripe est payé,
+         * on demande d'abord le remboursement
+         * côté serveur.
+         */
+        if (
+          participation.payment_status ===
+          "paid"
+        ) {
+          const res = await fetch(
+            "/api/refund",
+            {
+              method: "POST",
+
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+
+              body: JSON.stringify({
+                participationId:
+                  participation.id,
+              }),
+            }
+          );
+
+          if (!res.ok) {
+            const error =
+              await res
+                .json()
+                .catch(() => ({}));
+
+            throw new Error(
+              error.error ??
+                "Erreur lors du remboursement."
+            );
+          }
+        }
+
+        /*
+         * Une fois le remboursement demandé,
+         * on supprime la participation.
+         */
+        return cancelJoinRequest(
+          participation.id
+        );
+      },
+
+      onSuccess: () => {
+        qc.setQueryData(
+          participationKey,
+          null
+        );
+
+        qc.invalidateQueries({
+          queryKey: ["hikes"],
+        });
+
+        qc.invalidateQueries({
+          queryKey: [
+            "hike-participants",
+            hike.id,
+          ],
+        });
+
+        setShowCancelModal(false);
+
+        toast.success(
+          participation?.payment_status ===
+            "paid"
+            ? "Participation annulée. Remboursement en cours (5-10 jours ouvrés)."
+            : "Participation annulée."
+        );
+      },
+
+      onError: (error: any) => {
+        setShowCancelModal(false);
+
+        toast.error(
+          error?.message ??
+            "Impossible d'annuler la participation."
+        );
+      },
+    });
 
   /* ---------------------------------------------------------------------- */
-  /* DEMANDES                                                                */
+  /* ORGANIZER                                                              */
   /* ---------------------------------------------------------------------- */
+
+  const isOrganizer =
+    user?.id === hike.organizer.id;
 
   const requestsKey = [
     "hike-requests",
     hike.id,
   ];
 
-  const { data: requests = [] } = useQuery({
-    queryKey: requestsKey,
-    queryFn: () =>
-      fetchHikeRequests(hike.id),
-    enabled: isOrganizer,
-  });
+  const { data: requests = [] } =
+    useQuery({
+      queryKey: requestsKey,
+
+      queryFn: () =>
+        fetchHikeRequests(
+          hike.id
+        ),
+
+      enabled: isOrganizer,
+    });
 
   const respondMut = useMutation({
     mutationFn: ({
@@ -1096,9 +1139,14 @@ function HikeDetail() {
       status,
     }: {
       id: string;
-      status: "accepted" | "declined";
+      status:
+        | "accepted"
+        | "declined";
     }) =>
-      respondToRequest(id, status),
+      respondToRequest(
+        id,
+        status
+      ),
 
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({
@@ -1123,45 +1171,53 @@ function HikeDetail() {
       );
     },
 
-    onError: (error: any) =>
+    onError: (error: any) => {
       toast.error(
         error?.message ??
           "Impossible de mettre à jour la demande."
-      ),
+      );
+    },
   });
 
   const pendingRequests =
     requests.filter(
-      (r) => r.status === "pending"
+      (request) =>
+        request.status ===
+        "pending"
     );
 
   /* ---------------------------------------------------------------------- */
   /* AUTRES RANDONNÉES                                                      */
   /* ---------------------------------------------------------------------- */
 
-  const { data: others = [] } = useQuery({
-    queryKey: [
-      "hikes",
-      "others",
-      hike.id,
-    ],
+  const { data: others = [] } =
+    useQuery({
+      queryKey: [
+        "hikes",
+        "others",
+        hike.id,
+      ],
 
-    queryFn: () =>
-      fetchPublicHikes({
-        limit: 4,
-      }),
+      queryFn: () =>
+        fetchPublicHikes({
+          limit: 4,
+        }),
 
-    select: (rows) =>
-      rows
-        .filter(
-          (h) => h.id !== hike.id
-        )
-        .slice(0, 3),
-  });
+      select: (rows) =>
+        rows
+          .filter(
+            (item) =>
+              item.id !== hike.id
+          )
+          .slice(0, 3),
+    });
+
+  /* ---------------------------------------------------------------------- */
+  /* RENDER                                                                 */
+  /* ---------------------------------------------------------------------- */
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* LIABILITY */}
       {showLiability && (
         <LiabilityModal
           onConfirm={() =>
@@ -1170,38 +1226,37 @@ function HikeDetail() {
           onCancel={() =>
             setShowLiability(false)
           }
-          isPending={joinMut.isPending}
+          isPending={
+            joinMut.isPending
+          }
           isPaid={
-            !!(
-              hike.priceCents &&
-              hike.priceCents > 0
-            )
+            hike.priceCents != null &&
+            hike.priceCents > 0
           }
           totalCents={totalCents}
           currency={hike.currency}
         />
       )}
 
-      {/* CANCEL */}
-      {showCancelModal && (
-        <CancelParticipationModal
-          onConfirm={() =>
-            cancelWithRefundMut.mutate()
-          }
-          onClose={() =>
-            setShowCancelModal(false)
-          }
-          isPending={
-            cancelWithRefundMut.isPending
-          }
-          isPaid={
-            participation?.payment_status ===
-            "paid"
-          }
-        />
-      )}
+      {showCancelModal &&
+        participation && (
+          <CancelParticipationModal
+            onConfirm={() =>
+              cancelWithRefundMut.mutate()
+            }
+            onClose={() =>
+              setShowCancelModal(false)
+            }
+            isPending={
+              cancelWithRefundMut.isPending
+            }
+            isPaid={
+              participation.payment_status ===
+              "paid"
+            }
+          />
+        )}
 
-      {/* EDIT */}
       {showEdit && (
         <EditHikeModal
           hike={hike}
@@ -1215,10 +1270,6 @@ function HikeDetail() {
       )}
 
       <SiteHeader />
-
-      {/* ------------------------------------------------------------------ */}
-      {/* HEADER                                                              */}
-      {/* ------------------------------------------------------------------ */}
 
       <div className="container mx-auto px-4 pt-6 flex items-center justify-between">
         <Link
@@ -1243,13 +1294,8 @@ function HikeDetail() {
         )}
       </div>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* CONTENT                                                             */}
-      {/* ------------------------------------------------------------------ */}
-
       <section className="container mx-auto px-4 mt-6 grid lg:grid-cols-[1fr_380px] gap-10">
         <div>
-          {/* Infos principales */}
           <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground mb-3">
             <span className="px-3 py-1 rounded-full bg-primary/10 text-primary font-medium">
               {hike.difficulty}
@@ -1291,7 +1337,6 @@ function HikeDetail() {
             />
           </div>
 
-          {/* Organisateur */}
           <div className="mt-10 flex items-center gap-4 p-5 rounded-3xl bg-card shadow-[var(--shadow-soft)]">
             <Link
               to="/profile/$id"
@@ -1322,7 +1367,8 @@ function HikeDetail() {
               </Link>
 
               <p className="text-xs text-muted-foreground">
-                Randonneur {hike.organizer.level}
+                Randonneur{" "}
+                {hike.organizer.level}
               </p>
             </div>
 
@@ -1365,7 +1411,6 @@ function HikeDetail() {
             )}
           </div>
 
-          {/* Description */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">
               À propos de cette randonnée
@@ -1376,7 +1421,6 @@ function HikeDetail() {
             </p>
           </div>
 
-          {/* Meeting point */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">
               Point de rendez-vous
@@ -1401,7 +1445,6 @@ function HikeDetail() {
             </div>
           </div>
 
-          {/* Equipment */}
           {hike.equipment.length > 0 && (
             <div className="mt-10">
               <h2 className="font-display text-2xl mb-3">
@@ -1410,7 +1453,7 @@ function HikeDetail() {
 
               <ul className="grid sm:grid-cols-2 gap-2">
                 {hike.equipment.map(
-                  (equipment: string) => (
+                  (equipment) => (
                     <li
                       key={equipment}
                       className="flex items-center gap-2 p-3 rounded-2xl bg-secondary/50 text-sm"
@@ -1424,7 +1467,6 @@ function HikeDetail() {
             </div>
           )}
 
-          {/* Participants */}
           <div className="mt-10">
             <h2 className="font-display text-2xl mb-3">
               Participants
@@ -1438,12 +1480,8 @@ function HikeDetail() {
           </div>
         </div>
 
-        {/* ---------------------------------------------------------------- */}
-        {/* SIDEBAR                                                          */}
-        {/* ---------------------------------------------------------------- */}
-
+        {/* SIDEBAR */}
         <aside className="lg:sticky lg:top-24 h-fit space-y-4">
-          {/* Carte rejoindre */}
           <div className="rounded-3xl bg-card p-6 shadow-[var(--shadow-elegant)] border border-border">
             <p className="text-sm text-muted-foreground">
               Rejoindre cette randonnée
@@ -1466,7 +1504,7 @@ function HikeDetail() {
 
             {hike.priceCents != null &&
               hike.priceCents > 0 &&
-              totalCents && (
+              totalCents != null && (
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Total facturé :{" "}
                   <span className="font-medium text-foreground">
@@ -1479,7 +1517,7 @@ function HikeDetail() {
                 </p>
               )}
 
-            {/* Organisateur */}
+            {/* ORGANISATEUR */}
             {isOrganizer ? (
               <div className="mt-5 space-y-2">
                 <div className="p-3 rounded-2xl bg-secondary/50 text-sm text-center text-muted-foreground">
@@ -1547,7 +1585,7 @@ function HikeDetail() {
 
                   {participation.payment_status ===
                     "pending" &&
-                  hike.priceCents &&
+                  hike.priceCents != null &&
                   hike.priceCents > 0
                     ? "En attente de paiement"
                     : "Demande en attente"}
@@ -1555,7 +1593,7 @@ function HikeDetail() {
 
                 {participation.payment_status ===
                   "pending" &&
-                hike.priceCents &&
+                hike.priceCents != null &&
                 hike.priceCents > 0 ? (
                   <Button
                     className="w-full rounded-2xl mt-2"
@@ -1588,7 +1626,7 @@ function HikeDetail() {
                       cancelMut.mutate()
                     }
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-4 w-4 mr-1" />
                     Annuler la demande
                   </Button>
                 )}
@@ -1658,9 +1696,9 @@ function HikeDetail() {
               >
                 {hike.spotsLeft === 0
                   ? "Randonnée complète"
-                  : hike.priceCents &&
+                  : hike.priceCents != null &&
                     hike.priceCents > 0 &&
-                    totalCents
+                    totalCents != null
                   ? `Rejoindre — ${(
                       totalCents / 100
                     ).toFixed(2)} ${
@@ -1671,10 +1709,7 @@ function HikeDetail() {
             )}
           </div>
 
-          {/* -------------------------------------------------------------- */}
-          {/* DEMANDES ORGANISATEUR                                           */}
-          {/* -------------------------------------------------------------- */}
-
+          {/* DEMANDES ORGANISATEUR */}
           {isOrganizer && (
             <div className="rounded-3xl bg-card p-5 shadow-[var(--shadow-soft)] border border-border">
               <div className="flex items-center gap-2 mb-3">
@@ -1790,54 +1825,51 @@ function HikeDetail() {
         </aside>
       </section>
 
-      {/* ------------------------------------------------------------------ */}
-      {/* OTHER HIKES                                                        */}
-      {/* ------------------------------------------------------------------ */}
-
+      {/* AUTRES RANDONNÉES */}
       {others.length > 0 && (
         <section className="container mx-auto px-4 mt-20">
           <h2 className="font-display text-2xl mb-6">
-            D'autres randonnées qui pourraient
-            vous plaire
+            D'autres randonnées qui pourraient vous
+            plaire
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {others.map((otherHike) => (
+            {others.map((item) => (
               <Link
-                key={otherHike.id}
+                key={item.id}
                 to="/hikes/$slug"
                 params={{
-                  slug: otherHike.slug,
+                  slug: item.slug,
                 }}
                 className="group rounded-3xl bg-card border border-border shadow-[var(--shadow-soft)] hover:shadow-[var(--shadow-elegant)] transition-all p-5"
               >
                 <p className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
                   <MapPin className="h-3 w-3" />
-                  {otherHike.location}
+                  {item.location}
                 </p>
 
                 <p className="font-medium group-hover:text-primary transition-colors">
-                  {otherHike.title}
+                  {item.title}
                 </p>
 
                 <p className="text-xs text-muted-foreground mt-1">
-                  {otherHike.date}
+                  {item.date}
                 </p>
 
                 <div className="flex items-center gap-3 mt-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1">
                     <Clock className="h-3 w-3" />
-                    {otherHike.durationHours}h
+                    {item.durationHours}h
                   </span>
 
                   <span className="flex items-center gap-1">
                     <TrendingUp className="h-3 w-3" />
-                    {otherHike.elevationM}m
+                    {item.elevationM}m
                   </span>
 
                   <span className="flex items-center gap-1">
                     <Users className="h-3 w-3" />
-                    {otherHike.spotsLeft} places
+                    {item.spotsLeft} places
                   </span>
                 </div>
               </Link>
@@ -1883,4 +1915,3 @@ function Stat({
     </div>
   );
 }
-```
