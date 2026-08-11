@@ -1,0 +1,8 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "eu.blablahike.www.twa",
+        "sha256_cert_fingerprints": ["A8:7D:3D:87:D6:D9:7B:26:EC:F7:3C:E7:D9:B4:6F:E9:A7:68:4C:BA:7A:6C:F3:D3:2B:34:CB:86:5A:5C:2E:BF"]
+      }
+    }]
