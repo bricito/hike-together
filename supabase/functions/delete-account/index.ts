@@ -7,7 +7,6 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Non autorisé" }), { status: 401 });
     }
 
-    // Client scoped to the requesting user, to identify them from their JWT
     const supabaseUser = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -19,18 +18,25 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: "Utilisateur introuvable" }), { status: 401 });
     }
 
-    // Admin client with service_role to perform the actual deletion
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Delete app-specific data first (adapt table names to your schema)
+    // Supprime les données applicatives liées à l'utilisateur
     await supabaseAdmin.from("hikes").delete().eq("user_id", user.id);
     await supabaseAdmin.from("profiles").delete().eq("id", user.id);
-    // Ajoute ici toute autre table liée à l'utilisateur (commentaires, photos, fcm_tokens...)
 
-    // Finally, delete the auth user itself
+    // ⚠️ Adapte le nom de cette table à celle qui stocke ton lien Stripe Connect
+    // (probablement quelque chose comme "stripe_connect_accounts" ou "connect_accounts")
+    await supabaseAdmin.from("stripe_connect_accounts").delete().eq("user_id", user.id);
+
+    // Supprime les tokens FCM si stockés dans une table dédiée
+    await supabaseAdmin.from("fcm_tokens").delete().eq("user_id", user.id);
+
+    // Supprime l'avatar du storage
+    await supabaseAdmin.storage.from("avatars").remove([`${user.id}/avatar.webp`]);
+
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
