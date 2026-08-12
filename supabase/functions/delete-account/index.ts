@@ -23,20 +23,33 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
+    // Récupère le compte Stripe Connect avant de supprimer le profil
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("stripe_connect_account_id")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    // Ferme le compte Stripe Connect s'il existe
+    if (profile?.stripe_connect_account_id) {
+      await fetch(`https://api.stripe.com/v1/accounts/${profile.stripe_connect_account_id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${Deno.env.get("STRIPE_SECRET_KEY")}`,
+        },
+      });
+    }
+
     // Supprime les données applicatives liées à l'utilisateur
-    await supabaseAdmin.from("hikes").delete().eq("user_id", user.id);
-    await supabaseAdmin.from("profiles").delete().eq("id", user.id);
-
-    // ⚠️ Adapte le nom de cette table à celle qui stocke ton lien Stripe Connect
-    // (probablement quelque chose comme "stripe_connect_accounts" ou "connect_accounts")
-    await supabaseAdmin.from("stripe_connect_accounts").delete().eq("user_id", user.id);
-
-    // Supprime les tokens FCM si stockés dans une table dédiée
+    await supabaseAdmin.from("participations").delete().eq("user_id", user.id);
+    await supabaseAdmin.from("hikes").delete().eq("organizer_id", user.id);
     await supabaseAdmin.from("fcm_tokens").delete().eq("user_id", user.id);
-
-    // Supprime l'avatar du storage
     await supabaseAdmin.storage.from("avatars").remove([`${user.id}/avatar.webp`]);
 
+    // Supprime le profil (et donc stripe_connect_account_id avec)
+    await supabaseAdmin.from("profiles").delete().eq("id", user.id);
+
+    // Supprime l'utilisateur auth en dernier
     const { error: deleteError } = await supabaseAdmin.auth.admin.deleteUser(user.id);
     if (deleteError) {
       return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
