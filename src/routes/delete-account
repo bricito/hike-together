@@ -1,0 +1,161 @@
+```tsx
+import { createFileRoute } from "@tanstack/react-router";
+import { SiteHeader } from "@/components/SiteHeader";
+import { SiteFooter } from "@/components/SiteFooter";
+import { MobileNav } from "@/components/MobileNav";
+
+export const Route = createFileRoute("/delete-account")({
+  head: () => ({
+    meta: [{ title: "Suppression du compte — BlablaHike" }],
+  }),
+  component: DeleteAccountPage,
+});
+
+function DeleteAccountPage() {
+  return (
+    <div className="min-h-screen flex flex-col">
+      <SiteHeader />
+
+      <main className="container mx-auto px-4 py-12 max-w-3xl pb-24 md:pb-12">
+        <h1 className="font-display text-4xl mb-2">
+          Suppression du compte
+        </h1>
+
+        <p className="text-muted-foreground mb-10">
+          Dernière mise à jour : août 2026
+        </p>
+
+        <Section title="1. Supprimer votre compte">
+          <p>
+            Vous pouvez demander la suppression définitive de votre compte
+            BlablaHike et des données personnelles qui y sont associées.
+          </p>
+
+          <p>
+            Si vous utilisez l'application BlablaHike, vous pouvez effectuer
+            cette demande directement depuis votre profil, dans la section
+            dédiée à la suppression du compte.
+          </p>
+
+          <p>
+            Vous pouvez également demander la suppression de votre compte par
+            email à l'adresse suivante :
+          </p>
+
+          <p>
+            <a
+              href="mailto:blablahike07@gmail.com?subject=Demande%20de%20suppression%20de%20compte"
+              className="text-primary hover:underline font-medium"
+            >
+              blablahike07@gmail.com
+            </a>
+          </p>
+        </Section>
+
+        <Section title="2. Données supprimées">
+          <p>
+            Lors de la suppression du compte, les données personnelles
+            directement associées au compte sont supprimées ou anonymisées,
+            dans la mesure du possible.
+          </p>
+
+          <p>
+            Cela peut notamment inclure les informations de profil, l'adresse
+            email, la photo de profil, les informations d'authentification,
+            les données de localisation associées au compte et les contenus
+            personnels associés au compte.
+          </p>
+        </Section>
+
+        <Section title="3. Données pouvant être conservées">
+          <p>
+            Certaines données peuvent être conservées lorsque leur conservation
+            est nécessaire pour respecter une obligation légale, résoudre un
+            litige, prévenir la fraude ou assurer la sécurité du service.
+          </p>
+
+          <p>
+            Les données conservées pour ces raisons sont conservées uniquement
+            pendant la durée nécessaire à la finalité concernée.
+          </p>
+        </Section>
+
+        <Section title="4. Délai de suppression">
+          <p>
+            Après réception et vérification de la demande, la suppression du
+            compte est effectuée dans un délai raisonnable.
+          </p>
+
+          <p>
+            Certaines données peuvent rester temporairement présentes dans les
+            sauvegardes techniques avant leur suppression définitive,
+            conformément aux procédures de conservation et de sécurité de la
+            plateforme.
+          </p>
+        </Section>
+
+        <Section title="5. Demande par email">
+          <p>
+            Pour demander la suppression de votre compte par email, envoyez
+            votre demande à :
+          </p>
+
+          <p>
+            <a
+              href="mailto:blablahike07@gmail.com?subject=Demande%20de%20suppression%20de%20compte"
+              className="text-primary hover:underline"
+            >
+              blablahike07@gmail.com
+            </a>
+          </p>
+
+          <p>
+            Indiquez l'adresse email associée à votre compte afin que nous
+            puissions identifier le compte concerné et traiter la demande.
+          </p>
+        </Section>
+
+        <Section title="6. Besoin d'aide ?">
+          <p>
+            Pour toute question concernant la suppression de votre compte ou
+            vos données personnelles, vous pouvez contacter l'administrateur
+            à l'adresse :
+          </p>
+
+          <p>
+            <a
+              href="mailto:blablahike07@gmail.com"
+              className="text-primary hover:underline"
+            >
+              blablahike07@gmail.com
+            </a>
+          </p>
+        </Section>
+      </main>
+
+      <SiteFooter />
+      <MobileNav />
+    </div>
+  );
+}
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="mb-8">
+      <h3 className="font-display text-xl mb-3 text-foreground">
+        {title}
+      </h3>
+
+      <div className="text-muted-foreground leading-relaxed space-y-2">
+        {children}
+      </div>
+    </div>
+  );
+}
+```
