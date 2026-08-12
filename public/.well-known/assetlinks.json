@@ -3,6 +3,6 @@
       "target": {
         "namespace": "android_app",
         "package_name": "eu.blablahike.www.twa",
-        "sha256_cert_fingerprints": ["A8:7D:3D:87:D6:D9:7B:26:EC:F7:3C:E7:D9:B4:6F:E9:A7:68:4C:BA:7A:6C:F3:D3:2B:34:CB:86:5A:5C:2E:BF"]
+        "sha256_cert_fingerprints": ["22:86:5C:FC:27:32:63:ED:7D:6C:15:59:DC:52:5F:F7:87:7D:A6:93:13:47:8C:6F:17:43:14:72:2C:2A:89:05"]
       }
     }]
