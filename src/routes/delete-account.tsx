@@ -25,7 +25,7 @@ function DeleteAccountPage() {
           Dernière mise à jour : août 2026
         </p>
 
-        <Section title="Comment supprimer votre compte ?">
+        <Section title="1. Comment supprimer votre compte ?">
           <p>
             Vous pouvez supprimer votre compte BlablaHike directement depuis
             l'application.
@@ -33,28 +33,37 @@ function DeleteAccountPage() {
 
           <p>
             Pour cela, connectez-vous à votre compte, ouvrez votre profil puis
-            sélectionnez l'option <strong>« Supprimer mon compte »</strong>.
+            sélectionnez l'option{" "}
+            <strong>« Supprimer mon compte »</strong>.
           </p>
 
           <p>
             La suppression du compte entraîne la suppression des données
-            personnelles associées à votre compte, dans la mesure du possible.
+            personnelles associées à votre compte, sous réserve des données
+            qui doivent être conservées pour des raisons légales ou de
+            sécurité.
           </p>
         </Section>
 
-        <Section title="Données supprimées">
+        <Section title="2. Données supprimées">
           <p>
-            La suppression du compte entraîne notamment la suppression des
-            informations personnelles associées au compte, telles que les
-            informations de profil, l'adresse email, la photo de profil et les
-            données de localisation associées au compte.
+            Lorsque votre compte est supprimé, les données personnelles
+            associées à celui-ci sont supprimées ou anonymisées, dans la mesure
+            du possible.
+          </p>
+
+          <p>
+            Cela peut notamment concerner les informations de profil, l'adresse
+            email, la photo de profil, les informations d'authentification,
+            les données de localisation associées au compte et les contenus
+            personnels associés à votre compte.
           </p>
         </Section>
 
-        <Section title="Données pouvant être conservées">
+        <Section title="3. Données pouvant être conservées">
           <p>
-            Certaines données peuvent être conservées lorsque cela est
-            nécessaire pour respecter une obligation légale, prévenir la
+            Certaines données peuvent être conservées lorsque leur conservation
+            est nécessaire pour respecter une obligation légale, prévenir la
             fraude, assurer la sécurité du service ou résoudre un litige.
           </p>
 
@@ -64,10 +73,23 @@ function DeleteAccountPage() {
           </p>
         </Section>
 
-        <Section title="Besoin d'aide ?">
+        <Section title="4. Délai de suppression">
           <p>
-            Pour toute question concernant la suppression de votre compte ou
-            vos données personnelles, vous pouvez contacter :
+            La suppression du compte est effectuée lorsque l'utilisateur
+            confirme la suppression depuis l'application.
+          </p>
+
+          <p>
+            Certaines données peuvent rester temporairement présentes dans les
+            sauvegardes techniques avant leur suppression définitive.
+          </p>
+        </Section>
+
+        <Section title="5. Besoin d'aide ?">
+          <p>
+            Si vous ne parvenez pas à supprimer votre compte depuis
+            l'application ou si vous avez une question concernant vos données
+            personnelles, vous pouvez contacter l'administrateur :
           </p>
 
           <p>
