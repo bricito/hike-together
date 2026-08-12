@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/integrations/supabase/client";
 import { Camera, Loader2 } from "lucide-react";
+import { DeleteAccountButton } from "@/components/DeleteAccountButton";
 
 export const Route = createFileRoute("/me")({
   component: MyProfilePage,
@@ -370,7 +371,16 @@ function MyProfilePage() {
             )}
           </CardContent>
         </Card>
+        <Card className="mt-6 border-destructive/20">
+          <CardHeader>
+            <CardTitle className="text-destructive">Zone dangereuse</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <DeleteAccountButton />
+          </CardContent>
+        </Card>
       </main>
+    
 
       <SiteFooter />
       <MobileNav />
