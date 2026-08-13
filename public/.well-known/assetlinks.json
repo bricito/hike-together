@@ -1,5 +1,8 @@
 [{
   "relation": ["delegate_permission/common.handle_all_urls"],
-  "target" : { "namespace": "android_app", "package_name": "eu.blablahike.twa",
-               "sha256_cert_fingerprints": ["22:86:5C:FC:27:32:63:ED:7D:6C:15:59:DC:52:5F:F7:87:7D:A6:93:13:47:8C:6F:17:43:14:72:2C:2A:89:05"] }
+  "target": {
+    "namespace": "android_app",
+    "package_name": "eu.blablahike.www.twa",
+    "sha256_cert_fingerprints": ["22:86:5C:FC:27:32:63:ED:7D:6C:15:59:DC:52:5F:F7:87:7D:A6:93:13:47:8C:6F:17:43:14:72:2C:2A:89:05"]
+  }
 }]
