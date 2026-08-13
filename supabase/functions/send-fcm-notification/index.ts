@@ -104,29 +104,40 @@ serve(async (req) => {
 
     // Envoie à chaque token
     const results = await Promise.all(
-      tokens.map(async ({ token }: { token: string }) => {
-        const res = await fetch(
-          `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-          {
-            method: "POST",
-            headers: {
-              "Authorization": `Bearer ${accessToken}`,
-              "Content-Type": "application/json",
+  tokens.map(async ({ token }: { token: string }) => {
+    const res = await fetch(
+      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: {
+            token,
+            notification: { title, body },
+            webpush: {
+              fcm_options: { link: url ?? "https://blablahike.eu/notifications" },
             },
-            body: JSON.stringify({
-              message: {
-                token,
-                notification: { title, body },
-                webpush: {
-                  fcm_options: { link: url ?? "https://blablahike.eu/notifications" },
-                },
-              },
-            }),
-          }
-        );
-        return res.ok;
-      })
+          },
+        }),
+      }
     );
+
+    if (!res.ok) {
+      const errBody = await res.text();
+      console.error(`FCM error for token ${token.slice(0, 20)}...:`, res.status, errBody);
+
+      // Token mort → on le supprime de la base pour ne pas réessayer indéfiniment
+      if (res.status === 404 || errBody.includes("UNREGISTERED") || errBody.includes("NOT_FOUND")) {
+        await supabase.from("fcm_tokens").delete().eq("token", token);
+      }
+    }
+
+    return res.ok;
+  })
+);
 
     return new Response(JSON.stringify({ success: true, sent: results.filter(Boolean).length }), { status: 200 });
   } catch (e) {
