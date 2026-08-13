@@ -1,6 +1,6 @@
 import { initializeApp, getApps } from "firebase/app";
-import { getMessaging, getToken, onMessage } from "firebase/messaging";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASXPKgPPWiIDaF5p3IVpcKOQeC8_rjXVo",
@@ -27,28 +27,61 @@ export async function requestFCMToken(): Promise<string | null> {
     if (typeof Notification === "undefined") return null;
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return null;
+    if (permission !== "granted") {
+      console.warn("Permission notification non accordée:", permission);
+      return null;
+    }
+
+    // Vérifie que le service worker est bien enregistré avant d'appeler getToken()
+    if (!("serviceWorker" in navigator)) {
+      toast.error("Notifications non supportées: pas de service worker sur ce device");
+      return null;
+    }
+
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    if (registrations.length === 0) {
+      console.warn("Aucun service worker enregistré au moment de requestFCMToken()");
+    }
 
     const { getMessaging, getToken } = await import("firebase/messaging");
     const messaging = getMessaging();
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
 
-    if (token) {
-      // Sauvegarde le token en base
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from("fcm_tokens")
-          .upsert(
-            { user_id: user.id, token, updated_at: new Date().toISOString() },
-            { onConflict: "token" }
-          );
-      }
+    if (!token) {
+      toast.error("Notifications: getToken() n'a renvoyé aucun token");
+      return null;
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+
+    if (userError) {
+      toast.error(`Notifications: erreur auth (${userError.message})`);
+      return null;
+    }
+
+    if (!user) {
+      console.warn("Token FCM généré mais aucun user Supabase trouvé — token non sauvegardé");
+      toast.error("Notifications: utilisateur non connecté, token non sauvegardé");
+      return null;
+    }
+
+    const { error: upsertError } = await supabase
+      .from("fcm_tokens")
+      .upsert(
+        { user_id: user.id, token, updated_at: new Date().toISOString() },
+        { onConflict: "token" }
+      );
+
+    if (upsertError) {
+      console.error("Erreur upsert fcm_tokens:", upsertError);
+      toast.error(`Notifications: échec sauvegarde token (${upsertError.message})`);
+      return null;
     }
 
     return token;
   } catch (error) {
     console.error("FCM token error:", error);
+    toast.error(`Erreur notification: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
