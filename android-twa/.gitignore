@@ -1,0 +1,6 @@
+*.keystore
+*.jks
+*.aab
+*.apk
+build/
+.bubblewrap/
