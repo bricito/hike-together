@@ -19,9 +19,9 @@ export function initFirebase() {
   if (getApps().length === 0) {
     initializeApp(firebaseConfig);
   }
+  toast.info("0. initFirebase() OK");
 }
 
-// Attend que la session Supabase soit pleinement établie (JWT présent), avec retry
 async function waitForValidSession(maxAttempts = 5, delayMs = 500) {
   for (let i = 0; i < maxAttempts; i++) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -34,62 +34,70 @@ async function waitForValidSession(maxAttempts = 5, delayMs = 500) {
 }
 
 export async function requestFCMToken(): Promise<string | null> {
+  toast.info("1. Début requestFCMToken()");
+
   try {
-    if (typeof window === "undefined") return null;
-    if (typeof Notification === "undefined") return null;
+    if (typeof window === "undefined") {
+      toast.error("1b. window undefined, on sort");
+      return null;
+    }
+    if (typeof Notification === "undefined") {
+      toast.error("1c. Notification API indisponible sur ce device");
+      return null;
+    }
 
     const permission = await Notification.requestPermission();
+    toast.info(`2. Permission: ${permission}`);
+
     if (permission !== "granted") {
-      console.warn("Permission notification non accordée:", permission);
+      toast.error(`2b. Permission non accordée (${permission}), on sort`);
       return null;
     }
 
     if (!("serviceWorker" in navigator)) {
-      toast.error("Notifications non supportées: pas de service worker sur ce device");
+      toast.error("3a. serviceWorker non supporté");
       return null;
     }
 
     const registrations = await navigator.serviceWorker.getRegistrations();
-    if (registrations.length === 0) {
-      console.warn("Aucun service worker enregistré au moment de requestFCMToken()");
-    }
+    toast.info(`3. SW registrations: ${registrations.length}`);
 
     const { getMessaging, getToken } = await import("firebase/messaging");
     const messaging = getMessaging();
+    toast.info("4. getMessaging() OK, appel getToken()...");
+
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
+    toast.info(`5. Token généré: ${token ? "oui (" + token.slice(0, 10) + "...)" : "non"}`);
 
     if (!token) {
-      toast.error("Notifications: getToken() n'a renvoyé aucun token");
+      toast.error("5b. getToken() a renvoyé null/vide");
       return null;
     }
 
-    // Attend une session pleinement établie avant d'écrire en base
     const session = await waitForValidSession();
+    toast.info(`6. Session prête: ${session ? "oui, user=" + session.user.id.slice(0, 8) : "non"}`);
 
     if (!session) {
-      console.warn("Token FCM généré mais session Supabase non prête après plusieurs tentatives");
-      toast.error("Notifications: session non prête, réessaie plus tard");
+      toast.error("6b. Session jamais prête après 5 tentatives");
       return null;
     }
 
-    // Passe par une fonction RPC (SECURITY DEFINER) qui réassigne le token
-    // au user courant même s'il appartenait précédemment à un autre compte
-    // (device réutilisé pour plusieurs comptes de test) — contourne le blocage
-    // RLS qu'un upsert direct rencontrerait dans ce cas.
+    toast.info("7. Appel RPC save_fcm_token...");
     const { error: rpcError } = await supabase.rpc("save_fcm_token", {
       p_token: token,
     });
 
     if (rpcError) {
+      toast.error(`7b. Erreur RPC: ${rpcError.message}`);
       console.error("Erreur save_fcm_token:", rpcError);
-      toast.error(`Notifications: échec sauvegarde token (${rpcError.message})`);
       return null;
     }
 
+    toast.success("8. Token sauvegardé avec succès !");
     return token;
   } catch (error) {
+    toast.error(`EXCEPTION: ${error instanceof Error ? error.message : String(error)}`);
     console.error("FCM token error:", error);
-    toast.error(`Erreur notification: ${error instanceof Error ? error.message : String(error)}`);
     return null;
   }
 }
