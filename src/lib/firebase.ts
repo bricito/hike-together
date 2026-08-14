@@ -21,6 +21,18 @@ export function initFirebase() {
   }
 }
 
+// Attend que la session Supabase soit pleinement établie (JWT présent), avec retry
+async function waitForValidSession(maxAttempts = 5, delayMs = 500) {
+  for (let i = 0; i < maxAttempts; i++) {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.access_token && session?.user) {
+      return session;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return null;
+}
+
 export async function requestFCMToken(): Promise<string | null> {
   try {
     if (typeof window === "undefined") return null;
@@ -32,7 +44,6 @@ export async function requestFCMToken(): Promise<string | null> {
       return null;
     }
 
-    // Vérifie que le service worker est bien enregistré avant d'appeler getToken()
     if (!("serviceWorker" in navigator)) {
       toast.error("Notifications non supportées: pas de service worker sur ce device");
       return null;
@@ -52,18 +63,16 @@ export async function requestFCMToken(): Promise<string | null> {
       return null;
     }
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    // Attend une session pleinement établie avant d'écrire en base (évite le conflit RLS)
+    const session = await waitForValidSession();
 
-    if (userError) {
-      toast.error(`Notifications: erreur auth (${userError.message})`);
+    if (!session) {
+      console.warn("Token FCM généré mais session Supabase non prête après plusieurs tentatives");
+      toast.error("Notifications: session non prête, réessaie plus tard");
       return null;
     }
 
-    if (!user) {
-      console.warn("Token FCM généré mais aucun user Supabase trouvé — token non sauvegardé");
-      toast.error("Notifications: utilisateur non connecté, token non sauvegardé");
-      return null;
-    }
+    const user = session.user;
 
     const { error: upsertError } = await supabase
       .from("fcm_tokens")
