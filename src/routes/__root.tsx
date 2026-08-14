@@ -12,7 +12,8 @@ import {
 import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
-import { initFirebase, requestFCMToken } from "@/lib/firebase";
+import { toast } from "sonner";
+import { initFirebase, requestFCMToken, onFCMMessage } from "@/lib/firebase";
 import { Bell } from "lucide-react";
 
 function NotFoundComponent() {
@@ -67,16 +68,13 @@ function NotificationBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
-  const timer = setTimeout(() => {
-    if (typeof Notification !== "undefined" && Notification.permission === "default") {
-      setShow(true);
-    }
-    if (typeof Notification !== "undefined" && Notification.permission === "denied") {
-      setBlocked(true); // nouvel état pour afficher un message différent
-    }
-  }, 2000);
-  return () => clearTimeout(timer);
-}, []);
+    const timer = setTimeout(() => {
+      if (typeof Notification !== "undefined" && Notification.permission === "default") {
+        setShow(true);
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   if (!show) return null;
 
@@ -143,6 +141,16 @@ function RootComponent() {
     };
 
     saveTokenIfGranted();
+  }, []);
+
+  // Affiche un toast quand une notif arrive alors que l'app est ouverte (foreground)
+  useEffect(() => {
+    onFCMMessage((payload) => {
+      const { title, body } = payload.notification ?? {};
+      toast(title ?? "BlablaHike", {
+        description: body ?? "",
+      });
+    });
   }, []);
 
   return (
