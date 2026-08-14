@@ -1,6 +1,7 @@
 import { initializeApp, getApps } from "firebase/app";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { initFirebase, requestFCMToken, onFCMMessage } from "@/lib/firebase";
 
 const firebaseConfig = {
   apiKey: "AIzaSyASXPKgPPWiIDaF5p3IVpcKOQeC8_rjXVo",
