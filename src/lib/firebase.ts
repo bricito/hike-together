@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from "firebase/app"; 
+import { initializeApp, getApps } from "firebase/app";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -63,7 +63,7 @@ export async function requestFCMToken(): Promise<string | null> {
       return null;
     }
 
-    // Attend une session pleinement établie avant d'écrire en base (évite le conflit RLS)
+    // Attend une session pleinement établie avant d'écrire en base
     const session = await waitForValidSession();
 
     if (!session) {
@@ -72,18 +72,21 @@ export async function requestFCMToken(): Promise<string | null> {
       return null;
     }
 
-    const user = session.user;
+    // Passe par une fonction RPC (SECURITY DEFINER) qui réassigne le token
+    // au user courant même s'il appartenait précédemment à un autre compte
+    // (device réutilisé pour plusieurs comptes de test) — contourne le blocage
+    // RLS qu'un upsert direct rencontrerait dans ce cas.
+    const { error: rpcError } = await supabase.rpc("save_fcm_token", {
+      p_token: token,
+    });
 
-  const { error: rpcError } = await supabase.rpc("save_fcm_token", { p_token: token });
+    if (rpcError) {
+      console.error("Erreur save_fcm_token:", rpcError);
+      toast.error(`Notifications: échec sauvegarde token (${rpcError.message})`);
+      return null;
+    }
 
-if (rpcError) {
-  console.error("Erreur save_fcm_token:", rpcError);
-  toast.error(`Notifications: échec sauvegarde token (${rpcError.message})`);
-  return null;
-}
-
-    ret(upsertError) {
-  urn token;
+    return token;
   } catch (error) {
     console.error("FCM token error:", error);
     toast.error(`Erreur notification: ${error instanceof Error ? error.message : String(error)}`);
