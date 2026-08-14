@@ -1,4 +1,4 @@
-import { initializeApp, getApps } from "firebase/app";
+import { initializeApp, getApps } from "firebase/app"; 
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
