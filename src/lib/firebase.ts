@@ -74,20 +74,16 @@ export async function requestFCMToken(): Promise<string | null> {
 
     const user = session.user;
 
-    const { error: upsertError } = await supabase
-      .from("fcm_tokens")
-      .upsert(
-        { user_id: user.id, token, updated_at: new Date().toISOString() },
-        { onConflict: "token" }
-      );
+  const { error: rpcError } = await supabase.rpc("save_fcm_token", { p_token: token });
 
-    if (upsertError) {
-      console.error("Erreur upsert fcm_tokens:", upsertError);
-      toast.error(`Notifications: échec sauvegarde token (${upsertError.message})`);
-      return null;
-    }
+if (rpcError) {
+  console.error("Erreur save_fcm_token:", rpcError);
+  toast.error(`Notifications: échec sauvegarde token (${rpcError.message})`);
+  return null;
+}
 
-    return token;
+    ret(upsertError) {
+  urn token;
   } catch (error) {
     console.error("FCM token error:", error);
     toast.error(`Erreur notification: ${error instanceof Error ? error.message : String(error)}`);
