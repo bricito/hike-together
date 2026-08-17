@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const supabase = createClient( 
+const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
 );
@@ -61,7 +61,6 @@ async function getAccessToken(serviceAccount: any): Promise<string> {
 }
 
 serve(async (req) => {
-  // ✅ Gérer les requêtes OPTIONS (CORS preflight)
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
@@ -73,21 +72,18 @@ serve(async (req) => {
 
   try {
     const text = await req.text();
-    console.log("Body reçu:", text); // ← log pour voir ce qui arrive
-    
+    console.log("Body reçu:", text);
+
     if (!text || text.trim() === "") {
       return new Response(JSON.stringify({ error: "Body vide" }), { status: 400 });
     }
 
     const { user_id, title, body, url } = JSON.parse(text);
-    
+
     if (!user_id) {
       return new Response(JSON.stringify({ error: "user_id manquant" }), { status: 400 });
     }
 
- 
-
-    // Récupère les tokens FCM de l'utilisateur
     const { data: tokens, error } = await supabase
       .from("fcm_tokens")
       .select("token")
@@ -97,49 +93,55 @@ serve(async (req) => {
       return new Response(JSON.stringify({ success: false, reason: "no tokens" }), { status: 200 });
     }
 
-    // Charge le service account
     const serviceAccount = JSON.parse(Deno.env.get("FIREBASE_SERVICE_ACCOUNT")!);
     const accessToken = await getAccessToken(serviceAccount);
     const projectId = serviceAccount.project_id;
 
-    // Envoie à chaque token
     const results = await Promise.all(
-  tokens.map(async ({ token }: { token: string }) => {
-    const res = await fetch(
-      `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          message: {
-            token,
-            notification: { title, body },
-            webpush: {
-              fcm_options: { link: url ?? "https://blablahike.eu/notifications" },
+      tokens.map(async ({ token }: { token: string }) => {
+        const res = await fetch(
+          `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+              "Content-Type": "application/json",
             },
-          },
-        }),
-      }
+            body: JSON.stringify({
+              message: {
+                token,
+                notification: { title, body },
+                webpush: {
+                  fcm_options: { link: url ?? "https://blablahike.eu/notifications" },
+                },
+              },
+            }),
+          }
+        );
+
+        if (!res.ok) {
+          const errBody = await res.text();
+          console.error(`FCM error for token ${token.slice(0, 20)}...:`, res.status, errBody);
+
+          // Token mort → on le supprime pour ne pas réessayer indéfiniment
+          if (
+            res.status === 404 ||
+            errBody.includes("UNREGISTERED") ||
+            errBody.includes("NOT_FOUND")
+          ) {
+            await supabase.from("fcm_tokens").delete().eq("token", token);
+            console.log(`Token supprimé (invalide): ${token.slice(0, 20)}...`);
+          }
+        }
+
+        return res.ok;
+      })
     );
 
-    if (!res.ok) {
-      const errBody = await res.text();
-      console.error(`FCM error for token ${token.slice(0, 20)}...:`, res.status, errBody);
-
-      // Token mort → on le supprime de la base pour ne pas réessayer indéfiniment
-      if (res.status === 404 || errBody.includes("UNREGISTERED") || errBody.includes("NOT_FOUND")) {
-        await supabase.from("fcm_tokens").delete().eq("token", token);
-      }
-    }
-
-    return res.ok;
-  })
-);
-
-    return new Response(JSON.stringify({ success: true, sent: results.filter(Boolean).length }), { status: 200 });
+    return new Response(
+      JSON.stringify({ success: true, sent: results.filter(Boolean).length }),
+      { status: 200 }
+    );
   } catch (e) {
     console.error(e);
     return new Response(JSON.stringify({ error: String(e) }), { status: 500 });
