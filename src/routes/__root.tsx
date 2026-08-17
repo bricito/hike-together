@@ -147,18 +147,23 @@ function RootComponent() {
     // sauvegarde le token automatiquement.
 
 
-  const saveTokenIfGranted = async () => {
-    const installed = isRunningAsInstalledApp();
-    toast.info(`Mode installé détecté: ${installed ? "OUI" : "NON"}`); // DEBUG TEMPORAIRE
+const saveTokenIfGranted = async () => {
+  const installed = isRunningAsInstalledApp();
+  toast.info(`Mode installé détecté: ${installed ? "OUI" : "NON"}`);
 
-    if (
-      installed &&
-      typeof Notification !== "undefined" &&
-      Notification.permission === "granted"
-    ) {
-      await requestFCMToken();
-    }
-  };
+  const permState = typeof Notification !== "undefined" ? Notification.permission : "undefined";
+  toast.info(`Permission actuelle: ${permState}`); // NOUVEAU DEBUG
+
+  if (
+    installed &&
+    typeof Notification !== "undefined" &&
+    Notification.permission === "granted"
+  ) {
+    await requestFCMToken();
+  } else {
+    toast.warning("Condition non remplie, requestFCMToken() pas appelé"); // NOUVEAU DEBUG
+  }
+};
 
   saveTokenIfGranted();
 }, []);
