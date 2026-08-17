@@ -13,7 +13,12 @@ import appCss from "../styles.css?url";
 import { AuthProvider } from "@/lib/auth-context";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
-import { initFirebase, requestFCMToken, onFCMMessage } from "@/lib/firebase";
+import {
+  initFirebase,
+  requestFCMToken,
+  onFCMMessage,
+  isRunningAsInstalledApp,
+} from "@/lib/firebase";
 import { Bell } from "lucide-react";
 
 function NotFoundComponent() {
@@ -68,6 +73,11 @@ function NotificationBanner() {
   const [show, setShow] = useState(false);
 
   useEffect(() => {
+    // On ne propose l'activation des notifications que dans l'app installée
+    // (TWA), jamais dans un onglet Chrome classique — évite qu'une permission
+    // accordée via le navigateur "pollue" ou remplace celle de l'app.
+    if (!isRunningAsInstalledApp()) return;
+
     const timer = setTimeout(() => {
       if (typeof Notification !== "undefined" && Notification.permission === "default") {
         setShow(true);
@@ -133,9 +143,14 @@ function RootComponent() {
   useEffect(() => {
     initFirebase();
 
-    // Si permission déjà accordée, sauvegarde le token automatiquement
+    // Si permission déjà accordée ET qu'on est dans l'app installée,
+    // sauvegarde le token automatiquement.
     const saveTokenIfGranted = async () => {
-      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      if (
+        isRunningAsInstalledApp() &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
         await requestFCMToken();
       }
     };
