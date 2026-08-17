@@ -27,11 +27,14 @@ export function initFirebase() {
 // usage navigateur classique interfère avec l'expérience de l'app.
 export function isRunningAsInstalledApp(): boolean {
   if (typeof window === "undefined") return false;
-  return (
-    window.matchMedia("(display-mode: standalone)").matches ||
-    window.matchMedia("(display-mode: fullscreen)").matches ||
-    window.matchMedia("(display-mode: minimal-ui)").matches
-  );
+  const standalone = window.matchMedia("(display-mode: standalone)").matches;
+  const fullscreen = window.matchMedia("(display-mode: fullscreen)").matches;
+  const minimalUi = window.matchMedia("(display-mode: minimal-ui)").matches;
+
+  // DEBUG TEMPORAIRE
+  console.log("display-mode check:", { standalone, fullscreen, minimalUi });
+
+  return standalone || fullscreen || minimalUi;
 }
 
 // Attend que la session Supabase soit pleinement établie (JWT présent), avec retry.
