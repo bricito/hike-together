@@ -145,18 +145,23 @@ function RootComponent() {
 
     // Si permission déjà accordée ET qu'on est dans l'app installée,
     // sauvegarde le token automatiquement.
-    const saveTokenIfGranted = async () => {
-      if (
-        isRunningAsInstalledApp() &&
-        typeof Notification !== "undefined" &&
-        Notification.permission === "granted"
-      ) {
-        await requestFCMToken();
-      }
-    };
 
-    saveTokenIfGranted();
-  }, []);
+
+  const saveTokenIfGranted = async () => {
+    const installed = isRunningAsInstalledApp();
+    toast.info(`Mode installé détecté: ${installed ? "OUI" : "NON"}`); // DEBUG TEMPORAIRE
+
+    if (
+      installed &&
+      typeof Notification !== "undefined" &&
+      Notification.permission === "granted"
+    ) {
+      await requestFCMToken();
+    }
+  };
+
+  saveTokenIfGranted();
+}, []);
 
   // Affiche un toast quand une notif arrive alors que l'app est ouverte (foreground)
   useEffect(() => {
