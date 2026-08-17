@@ -5,7 +5,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -13,12 +12,10 @@ type AuthCtx = {
   user: User | null;
   session: Session | null;
   loading: boolean;
-
   signInEmail: (
     email: string,
     password: string
   ) => Promise<{ error: Error | null }>;
-
   signUpEmail: (
     email: string,
     password: string,
@@ -27,9 +24,7 @@ type AuthCtx = {
     error: Error | null;
     needsConfirmation: boolean;
   }>;
-
   signInWithOAuth: (provider: "google" | "apple") => Promise<void>;
-
   signOut: () => Promise<void>;
 };
 
@@ -45,37 +40,32 @@ export function AuthProvider({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // N'active/sauvegarde le token FCM que si l'app tourne en mode installé
+    // (TWA), jamais depuis un onglet Chrome classique.
+    const maybeSaveFCMToken = (hasUser: boolean) => {
+      if (!hasUser) return;
+      import("@/lib/firebase").then(
+        ({ initFirebase, requestFCMToken, isRunningAsInstalledApp }) => {
+          if (!isRunningAsInstalledApp()) return;
+          initFirebase();
+          requestFCMToken();
+        }
+      );
+    };
+
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_evt, s) => {
       setSession(s);
       setUser(s?.user ?? null);
-
-      if (s?.user) {
-        import("@/lib/firebase").then(
-          ({ initFirebase, requestFCMToken }) => {
-            initFirebase();
-            requestFCMToken();
-          }
-        );
-      }
-
+      maybeSaveFCMToken(!!s?.user);
       setLoading(false);
     });
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setUser(data.session?.user ?? null);
-
-      if (data.session?.user) {
-        import("@/lib/firebase").then(
-          ({ initFirebase, requestFCMToken }) => {
-            initFirebase();
-            requestFCMToken();
-          }
-        );
-      }
-
+      maybeSaveFCMToken(!!data.session?.user);
       setLoading(false);
     });
 
@@ -88,17 +78,14 @@ export function AuthProvider({
     user,
     session,
     loading,
-
     signInEmail: async (email, password) => {
       const { error } =
         await supabase.auth.signInWithPassword({
           email,
           password,
         });
-
       return { error };
     },
-
     signUpEmail: async (
       email,
       password,
@@ -106,7 +93,6 @@ export function AuthProvider({
     ) => {
       const redirectUrl =
         `${window.location.origin}/auth/callback`;
-
       const { data, error } =
         await supabase.auth.signUp({
           email,
@@ -118,14 +104,12 @@ export function AuthProvider({
             },
           },
         });
-
       return {
         error,
         needsConfirmation:
           !error && !data.session,
       };
     },
-
     signInWithOAuth: async (provider) => {
       await supabase.auth.signInWithOAuth({
         provider,
@@ -135,7 +119,6 @@ export function AuthProvider({
         },
       });
     },
-
     signOut: async () => {
       await supabase.auth.signOut();
     },
@@ -150,12 +133,10 @@ export function AuthProvider({
 
 export function useAuth() {
   const c = useContext(Ctx);
-
   if (!c) {
     throw new Error(
       "useAuth must be used within AuthProvider"
     );
   }
-
   return c;
 }
