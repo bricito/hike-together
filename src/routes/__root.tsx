@@ -1,5 +1,5 @@
 
-import { useEffect, useState } from "react"; 
+import { useEffect, useState } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -69,24 +69,43 @@ function RootShell({ children }: { children: React.ReactNode }) {
   );
 }
 
+type BannerStatus = "hidden" | "prompt" | "blocked";
+
 function NotificationBanner() {
-  const [show, setShow] = useState(false);
+  const [status, setStatus] = useState<BannerStatus>("hidden");
 
   useEffect(() => {
     // On ne propose l'activation des notifications que dans l'app installée
-    // (TWA), jamais dans un onglet Chrome classique — évite qu'une permission
-    // accordée via le navigateur "pollue" ou remplace celle de l'app.
+    // (TWA), jamais dans un onglet Chrome classique.
     if (!isRunningAsInstalledApp()) return;
 
     const timer = setTimeout(() => {
-      if (typeof Notification !== "undefined" && Notification.permission === "default") {
-        setShow(true);
-      }
+      if (typeof Notification === "undefined") return;
+      if (Notification.permission === "default") setStatus("prompt");
+      if (Notification.permission === "denied") setStatus("blocked");
     }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
-  if (!show) return null;
+  if (status === "hidden") return null;
+
+  if (status === "blocked") {
+    return (
+      <div className="fixed bottom-20 left-4 right-4 z-50 bg-card border border-border rounded-2xl p-4 shadow-lg flex items-center gap-3 md:max-w-sm md:left-auto md:right-4">
+        <Bell className="h-5 w-5 text-muted-foreground shrink-0" />
+        <p className="text-sm flex-1">
+          Notifications bloquées. Pour les réactiver : Chrome → Paramètres du
+          site → blablahike.eu → Notifications → Autoriser.
+        </p>
+        <button
+          className="text-xs text-muted-foreground"
+          onClick={() => setStatus("hidden")}
+        >
+          ✕
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed bottom-20 left-4 right-4 z-50 bg-card border border-border rounded-2xl p-4 shadow-lg flex items-center gap-3 md:max-w-sm md:left-auto md:right-4">
@@ -99,14 +118,14 @@ function NotificationBanner() {
           if (token) {
             console.log("FCM token:", token);
           }
-          setShow(false);
+          setStatus("hidden");
         }}
       >
         Activer
       </button>
       <button
         className="text-xs text-muted-foreground"
-        onClick={() => setShow(false)}
+        onClick={() => setStatus("hidden")}
       >
         ✕
       </button>
@@ -145,28 +164,18 @@ function RootComponent() {
 
     // Si permission déjà accordée ET qu'on est dans l'app installée,
     // sauvegarde le token automatiquement.
+    const saveTokenIfGranted = async () => {
+      if (
+        isRunningAsInstalledApp() &&
+        typeof Notification !== "undefined" &&
+        Notification.permission === "granted"
+      ) {
+        await requestFCMToken();
+      }
+    };
 
-
-const saveTokenIfGranted = async () => {
-  const installed = isRunningAsInstalledApp();
-  toast.info(`Mode installé détecté: ${installed ? "OUI" : "NON"}`);
-
-  const permState = typeof Notification !== "undefined" ? Notification.permission : "undefined";
-  toast.info(`Permission actuelle: ${permState}`); // NOUVEAU DEBUG
-
-  if (
-    installed &&
-    typeof Notification !== "undefined" &&
-    Notification.permission === "granted"
-  ) {
-    await requestFCMToken();
-  } else {
-    toast.warning("Condition non remplie, requestFCMToken() pas appelé"); // NOUVEAU DEBUG
-  }
-};
-
-  saveTokenIfGranted();
-}, []);
+    saveTokenIfGranted();
+  }, []);
 
   // Affiche un toast quand une notif arrive alors que l'app est ouverte (foreground)
   useEffect(() => {
