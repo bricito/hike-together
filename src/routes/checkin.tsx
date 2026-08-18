@@ -53,82 +53,18 @@ function CheckinPage() {
           return;
         }
 
-        const user = authData.user;
+        const { data, error } = await supabase.rpc("checkin_with_token", {
+          p_token: token,
+        });
 
-        const { data: checkin, error: checkinError } = await supabase
-          .from("hike_checkins")
-          .select("*")
-          .eq("token", token)
-          .single();
-
-        if (checkinError || !checkin) {
-          setStatus("invalid");
-          return;
-        }
-
-        if (new Date(checkin.expires_at) < new Date()) {
-          setStatus("expired");
-          return;
-        }
-
-        const { data: participant, error: participantError } = await supabase
-          .from("hike_participants")
-          .select("*")
-          .eq("hike_id", checkin.hike_id)
-          .eq("user_id", user.id)
-          .single();
-
-        if (participantError || !participant) {
-          setStatus("invalid");
-          return;
-        }
-
-        if (participant.checked_in) {
-          setStatus("already_checked");
-          return;
-        }
-
-        const { error: updateError } = await supabase
-          .from("hike_participants")
-          .update({
-            checked_in: true,
-            checked_in_at: new Date().toISOString(),
-          })
-          .eq("hike_id", checkin.hike_id)
-          .eq("user_id", user.id);
-
-        if (updateError) {
+        if (error) {
+          console.error(error);
           setStatus("error");
           return;
         }
 
-        const { data: hike } = await supabase
-          .from("hikes")
-          .select("organizer_id, title, slug")
-          .eq("id", checkin.hike_id)
-          .single();
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("pseudo")
-          .eq("id", user.id)
-          .single();
-
-        if (hike?.organizer_id) {
-          await supabase.from("notifications").insert({
-            user_id: hike.organizer_id,
-            type: "checkin",
-            payload: {
-              hike_id: checkin.hike_id,
-              hike_title: hike.title,
-              hike_slug: hike.slug,
-              user_id: user.id,
-              user_name: profile?.pseudo || "Un participant",
-            },
-          });
-        }
-
-        setStatus("success");
+        const resultStatus = (data as { status?: Status })?.status;
+        setStatus(resultStatus ?? "error");
       } catch (error) {
         console.error(error);
         setStatus("error");
