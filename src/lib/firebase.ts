@@ -22,7 +22,15 @@ export function initFirebase() {
 }
 
 // Détecte si l'app tourne en mode installé (TWA Android / PWA), par opposition
-// à un onglet Chrome classique.
+// à un onglet Chrome classique. Utilisé pour ne proposer/activer les notifications
+// que dans l'app installée.
+//
+// Note : la permission Notification (granted/denied/default) reste partagée par
+// Chrome au niveau de l'origine (blablahike.eu), donc bloquer manuellement les
+// notifs du site dans Chrome bloque aussi la TWA. C'est une limite connue et
+// acceptable pour l'usage réel (les utilisateurs ne bloquent pas le site à la
+// main) — une vraie séparation nécessiterait de passer par des notifications
+// natives (ex. Capacitor).
 export function isRunningAsInstalledApp(): boolean {
   if (typeof window === "undefined") return false;
   return (
@@ -33,6 +41,8 @@ export function isRunningAsInstalledApp(): boolean {
 }
 
 // Attend que la session Supabase soit pleinement établie (JWT présent), avec retry.
+// Nécessaire car requestFCMToken() peut être appelé juste après un login, avant
+// que la session soit complètement propagée côté client.
 async function waitForValidSession(maxAttempts = 5, delayMs = 500) {
   for (let i = 0; i < maxAttempts; i++) {
     const { data: { session } } = await supabase.auth.getSession();
@@ -50,8 +60,6 @@ export async function requestFCMToken(): Promise<string | null> {
     if (typeof Notification === "undefined") return null;
 
     const permission = await Notification.requestPermission();
-    toast.info(`Permission: ${permission}`); // DEBUG TEMPORAIRE
-
     if (permission !== "granted") {
       console.warn("Permission notification non accordée:", permission);
       return null;
@@ -65,7 +73,6 @@ export async function requestFCMToken(): Promise<string | null> {
     const { getMessaging, getToken } = await import("firebase/messaging");
     const messaging = getMessaging();
     const token = await getToken(messaging, { vapidKey: VAPID_KEY });
-    toast.info(`Token généré: ${token ? "oui" : "non"}`); // DEBUG TEMPORAIRE
 
     if (!token) {
       console.warn("getToken() n'a renvoyé aucun token");
@@ -73,29 +80,30 @@ export async function requestFCMToken(): Promise<string | null> {
     }
 
     const session = await waitForValidSession();
-    toast.info(`Session prête: ${session ? "oui" : "non"}`); // DEBUG TEMPORAIRE
 
     if (!session) {
       console.warn("Token FCM généré mais session Supabase non prête après plusieurs tentatives");
       return null;
     }
 
+    // Passe par une fonction RPC (SECURITY DEFINER) qui réassigne le token
+    // au user courant même s'il appartenait précédemment à un autre compte
+    // (device réutilisé pour plusieurs comptes) — contourne le blocage RLS
+    // qu'un upsert direct rencontrerait dans ce cas.
     const { error: rpcError } = await supabase.rpc("save_fcm_token", {
       p_token: token,
     });
 
     if (rpcError) {
       console.error("Erreur save_fcm_token:", rpcError);
-      toast.error(`Échec sauvegarde: ${rpcError.message}`); // DEBUG TEMPORAIRE
+      toast.error("Impossible d'activer les notifications, réessaie plus tard");
       return null;
     }
-
-    toast.success("Token sauvegardé !"); // DEBUG TEMPORAIRE
 
     return token;
   } catch (error) {
     console.error("FCM token error:", error);
-    toast.error(`Erreur: ${error instanceof Error ? error.message : String(error)}`); // DEBUG TEMPORAIRE
+    toast.error("Erreur lors de l'activation des notifications");
     return null;
   }
 }
