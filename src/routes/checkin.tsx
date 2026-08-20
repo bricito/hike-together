@@ -59,6 +59,7 @@ function CheckinPage() {
 
         if (error) {
           console.error(error);
+          toast.error(JSON.stringify(error)); // temporaire, pour debug
           setStatus("error");
           return;
         }
