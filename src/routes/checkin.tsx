@@ -1,4 +1,5 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { SiteHeader } from "@/components/SiteHeader";
@@ -33,47 +34,48 @@ function CheckinPage() {
 
   const [status, setStatus] = useState<Status>("loading");
 
-  useEffect(() => {
-    const validateCheckin = async () => {
-      try {
-        if (!token) {
-          setStatus("missing");
-          return;
-        }
-
-        const { data: authData } = await supabase.auth.getUser();
-
-        if (!authData.user) {
-          setStatus("login_required");
-          setTimeout(() => {
-            window.location.href = `/auth?redirect=${encodeURIComponent(
-              `/checkin?token=${token}`
-            )}`;
-          }, 1500);
-          return;
-        }
-
-        const { data, error } = await supabase.rpc("checkin_with_token", {
-          p_token: token,
-        });
-
-        if (error) {
-          console.error(error);
-          toast.error(JSON.stringify(error)); // temporaire, pour debug
-          setStatus("error");
-          return;
-        }
-
-        const resultStatus = (data as { status?: Status })?.status;
-        setStatus(resultStatus ?? "error");
-      } catch (error) {
-        console.error(error);
-        setStatus("error");
+ useEffect(() => {
+  const validateCheckin = async () => {
+    try {
+      if (!token) {
+        setStatus("missing");
+        return;
       }
-    };
 
-    validateCheckin();
-  }, [token]);
+      const { data: authData } = await supabase.auth.getUser();
+
+      if (!authData.user) {
+        setStatus("login_required");
+        setTimeout(() => {
+          window.location.href = `/auth?redirect=${encodeURIComponent(
+            `/checkin?token=${token}`
+          )}`;
+        }, 1500);
+        return;
+      }
+
+      const { data, error } = await supabase.rpc("checkin_with_token", {
+        p_token: token,
+      });
+
+      if (error) {
+        toast.error("RPC error: " + JSON.stringify(error));
+        setStatus("error");
+        return;
+      }
+
+      toast.info("RPC data: " + JSON.stringify(data));
+
+      const resultStatus = (data as { status?: Status })?.status;
+      setStatus(resultStatus ?? "error");
+    } catch (err: any) {
+      toast.error("Exception: " + (err?.message ?? JSON.stringify(err)));
+      setStatus("error");
+    }
+  };
+
+  validateCheckin();
+}, [token]);
 
   const states = {
     loading: {
